@@ -114,6 +114,37 @@ InitGraphics (
   // Hint: Use GetMode/SetMode functions.
   //
 
+  // MaxMode = number of modes
+  // MaxResMode sets by default with current mode
+  UINT32 MaxMode    = GraphicsOutput->Mode->MaxMode;
+  UINT32 MaxResMode = GraphicsOutput->Mode->Mode;
+
+  UINT32 HorizontalResolution = GraphicsOutput->Mode->Info->HorizontalResolution;
+  UINT32 VerticalResolution   = GraphicsOutput->Mode->Info->VerticalResolution;
+
+  for (unsigned int CurMode = 0;
+                    CurMode < MaxMode;
+                    CurMode ++ ) {
+    UINTN SizeOfInfo;
+    EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *Info;
+
+    Status = GraphicsOutput->QueryMode(GraphicsOutput, CurMode, &SizeOfInfo, &Info);
+    if (EFI_ERROR (Status)) {
+      DEBUG ((DEBUG_ERROR, "JOS: InitGraphics - Cannot get mode info - %r\n", Status));
+      continue;
+    }
+
+    if ((HorizontalResolution < Info->HorizontalResolution)
+    &&  (VerticalResolution < Info->VerticalResolution)) {
+      MaxResMode = CurMode;
+    }
+  }
+
+  Status = GraphicsOutput->SetMode(GraphicsOutput, MaxResMode);
+  if (EFI_ERROR (Status)) {
+    DEBUG ((DEBUG_ERROR, "JOS: InitGraphics - Cannot set mode - %r\n", Status));
+    return Status;
+  }
 
   //
   // Fill screen with black.
@@ -977,15 +1008,15 @@ UefiMain (
   UINTN              EntryPoint;
   VOID               *GateData;
 
-#if 1 ///< Uncomment to await debugging
-  volatile BOOLEAN   Connected;
-  DEBUG ((DEBUG_INFO, "JOS: Awaiting debugger connection\n"));
-
-  Connected = FALSE;
-  while (!Connected) {
-    ;
-  }
-#endif
+// #if 1 ///< Uncomment to await debugging
+//   volatile BOOLEAN   Connected;
+//   DEBUG ((DEBUG_INFO, "JOS: Awaiting debugger connection\n"));
+//
+//   Connected = FALSE;
+//   while (!Connected) {
+//     ;
+//   }
+// #endif
 
   Status = gRT->GetTime (&Now, NULL);
   if (EFI_ERROR (Status)) {

@@ -25,12 +25,45 @@ sched_yield(void) {
      * below to halt the cpu */
 
     // LAB 3: Your code here:
-    env_run(&envs[0]);
 
-    cprintf("Halt\n");
+    if (curenv == NULL)
+        env_run(&envs[0]);
+
+    const struct Env* end = (const struct Env*) (envs + NENV);    
+    struct Env* cur = curenv + 1;
+
+    while(cur != curenv)
+    {
+        if (cur == end) 
+        {
+            cur =  envs;
+            continue;
+        }
+
+        if (cur->env_status == ENV_FREE)
+        {
+            cur++;
+            continue;
+        }
+
+        if (cur->env_status == ENV_RUNNABLE)
+            env_run(cur);
+
+        if (cur->env_status == ENV_DYING)
+            env_free(cur);
+
+        if (cur->env_status == ENV_RUNNING)
+            panic("sched_yield: two envs with ENV_RUNNING env_status");
+
+        cur++;
+    }
+
+    if (cur->env_status != ENV_FREE)
+        env_run(curenv);
 
     /* No runnable environments,
      * so just halt the cpu */
+    cprintf("Halt\n");
     sched_halt();
 }
 

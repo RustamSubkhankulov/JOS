@@ -4,6 +4,7 @@
 #include <inc/dwarf.h>
 #include <inc/elf.h>
 #include <inc/x86.h>
+#include <inc/error.h>
 
 #include <kern/kdebug.h>
 #include <kern/env.h>
@@ -111,5 +112,41 @@ find_function(const char *const fname) {
 
     // LAB 3: Your code here:
 
-    return 0;
+    uintptr_t offset = 0;
+
+    struct Dwarf_Addrs addrs = {};
+    load_kernel_dwarf_info(&addrs);
+    
+    int err = naive_address_by_fname(&addrs, fname, &offset);
+    if (err < 0 && err != -E_NO_ENT)
+        panic("naive_address_by_fname: %i", err);
+
+    if (offset != 0 && err == 0)
+        return offset;
+
+    err = address_by_fname(&addrs, fname, &offset);
+    if (err < 0 && err != -E_NO_ENT)
+        panic("address_by_fname: %i", err);
+    
+    if (offset != 0 && err == 0)
+        return offset;
+    else
+    {
+        for (struct Elf64_Sym *kern_sym = (struct Elf64_Sym *)uefi_lp->SymbolTableStart;
+        (EFI_PHYSICAL_ADDRESS) kern_sym < uefi_lp->SymbolTableEnd;
+                               kern_sym++) {
+
+                const char *kern_sym_name = (const char *)(uefi_lp->StringTableStart + kern_sym->st_name);
+
+                if (!strcmp (kern_sym_name, fname))
+                {
+                    offset = (uintptr_t) kern_sym->st_value;
+                    cprintf("found offset in kernel table \n");
+
+                    return offset;
+                }
+            }
+    }
+
+    return offset;
 }

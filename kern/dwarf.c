@@ -570,8 +570,51 @@ address_by_fname(const struct Dwarf_Addrs *addrs, const char *fname, uintptr_t *
                     uintptr_t low_pc = 0;
                     // LAB 3: Your code here:
 
+                    //-------------------------------------
 
-                    *offset = low_pc;
+                    bool found = 0;
+
+                    do {
+                        abbrev_entry += dwarf_read_uleb128(abbrev_entry, &name);
+                        abbrev_entry += dwarf_read_uleb128(abbrev_entry, &form);
+
+                        if (name == DW_AT_low_pc) 
+                        {
+                            entry += dwarf_read_abbrev_entry(entry, form, &low_pc, sizeof(low_pc), address_size);
+                        } 
+                        else if (name == DW_AT_name) 
+                        {
+                            if (form == DW_FORM_strp) 
+                            {
+                                uint64_t str_offset = 0;
+                                entry += dwarf_read_abbrev_entry(entry, form, &str_offset, sizeof(uint64_t), address_size);
+                                
+                                if (!strcmp(fname, (const char *)addrs->str_begin + str_offset)) 
+                                    found = 1;
+                            } 
+                            else 
+                            {
+                                if (!strcmp(fname, (const char *)entry)) 
+                                    found = 1;
+                                    
+                                entry += dwarf_read_abbrev_entry(entry, form, NULL, 0, address_size);
+                            }
+                        } 
+                        else
+                            entry += dwarf_read_abbrev_entry(entry, form, NULL, 0, address_size);
+                    
+                    } while (name || form);
+
+                    if (found) 
+                    {
+                        *offset = low_pc;
+                        return 0;
+                    }
+                    else
+                        return -E_NO_ENT;
+
+                    //-------------------------------------
+
                 } else {
                     /* Skip if not a subprogram or label */
                     do {
@@ -580,11 +623,13 @@ address_by_fname(const struct Dwarf_Addrs *addrs, const char *fname, uintptr_t *
                         entry += dwarf_read_abbrev_entry(entry, form, NULL, 0, address_size);
                     } while (name || form);
                 }
-                return 0;
+                // return 0;
             }
             pubnames_entry += strlen((const char *)pubnames_entry) + 1;
         }
     }
+
+    cprintf("not found AAAA \n");
     return -E_NO_ENT;
 }
 

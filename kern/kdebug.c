@@ -141,7 +141,6 @@ find_function(const char *const fname) {
                 if (!strcmp (kern_sym_name, fname))
                 {
                     offset = (uintptr_t) kern_sym->st_value;
-                    cprintf("found offset in kernel table \n");
 
                     return offset;
                 }

@@ -200,8 +200,8 @@ env_alloc(struct Env **newenv_store, envid_t parent_id, enum EnvType type) {
  * must be performed within the image_start/image_end range.
  */
 static int
-bind_functions(struct Env *env, uint8_t *binary, size_t size, uintptr_t image_start, 
-                                                              uintptr_t image_end) {
+bind_functions(struct Env *env, uint8_t *binary, size_t size, struct Image_bounds* bounds, 
+                                                                         const int bounds_num) {
     // LAB 3: Your code here:
 
     /* NOTE: find_function from kdebug.c should be used */
@@ -211,20 +211,56 @@ bind_functions(struct Env *env, uint8_t *binary, size_t size, uintptr_t image_st
     const struct Secthdr* sec_headers      = (const struct Secthdr*) (binary + elf_header->e_shoff);
     const        uint16_t sec_headers_num  = (const        uint16_t) elf_header->e_shnum;
 
+    // check whether whole section header table is within image
+    if ((void*) (sec_headers) < (void*) binary || 
+        (void*) (sec_headers + sec_headers_num) > (void*) (binary + size))
+        return -E_INVALID_EXE;
+
     int16_t string_tab_ind = -1;
+
+    const struct Secthdr* shstr_header = sec_headers + elf_header->e_shstrndx;
+    
+    uint64_t shstr_offs = shstr_header->sh_offset; 
+    uint64_t shstr_size = shstr_header->sh_size;
+
+    // check whether shstr section is within image 
+    if (shstr_offs > size 
+     || shstr_offs + shstr_size > size)
+        return -E_INVALID_EXE;
+
+    const char* shstr = (const char*) (binary + shstr_offs);
 
     for (uint16_t sec_header_iter = 0; sec_header_iter < sec_headers_num; sec_header_iter++)
     {
         const struct Secthdr* cur_sec_header = sec_headers + sec_header_iter;
+    
+        uint32_t sh_name = cur_sec_header->sh_name;
 
-        if (cur_sec_header->sh_type == ELF_SHT_STRTAB)
+        // check whether sh_name is located within
+        // if ((void*) (shstr + sh_name) > (void*) (binary + shstr_offs + shstr_size - 8))
+            // return -E_INVALID_EXE;
+        
+        const char* null_check_ptr = shstr + sh_name;
+        const char* shstr_end      = shstr + shstr_size;
+
+        bool null_occured = false;
+
+        while (null_check_ptr < shstr_end)
         {
-            if (sec_header_iter == elf_header->e_shstrndx)
-                continue;
+            if (*null_check_ptr == '\0')
+            {
+                null_occured = true;
+                break;
+            }
 
-            string_tab_ind = (int16_t) sec_header_iter;
-            break;
+            null_check_ptr++;
         }
+
+        if (!null_occured)
+            return -E_INVALID_EXE;
+
+        if (strncmp(".strtab", shstr + sh_name, 8) == 0)
+            string_tab_ind = sec_header_iter;
     }
 
     if (string_tab_ind == -1)
@@ -232,6 +268,10 @@ bind_functions(struct Env *env, uint8_t *binary, size_t size, uintptr_t image_st
 
     const struct Secthdr* string_tab_hdr = sec_headers + string_tab_ind;
     const char*           string_tab     = (const char*) (binary + string_tab_hdr->sh_offset);
+
+    if (string_tab_hdr->sh_offset > size 
+     || string_tab_hdr->sh_offset + string_tab_hdr->sh_size > size)
+        return -E_INVALID_EXE;
 
     for (uint16_t sec_header_iter = 0; sec_header_iter < sec_headers_num; sec_header_iter++)
     {
@@ -246,6 +286,10 @@ bind_functions(struct Env *env, uint8_t *binary, size_t size, uintptr_t image_st
         const struct Elf64_Sym* sym_tab = (const struct Elf64_Sym*) (binary + cur_sec_header->sh_offset);
         size_t                  sym_num = (size_t) (cur_sec_header->sh_size / sizeof(struct Elf64_Sym));
 
+        if (cur_sec_header->sh_offset > size
+         || cur_sec_header->sh_offset + cur_sec_header->sh_size > size)
+            return -E_INVALID_EXE;
+
         for (size_t sym_iter = 0; sym_iter < sym_num; sym_iter++)
         {
             const struct Elf64_Sym* cur_sym = sym_tab + sym_iter;
@@ -259,16 +303,45 @@ bind_functions(struct Env *env, uint8_t *binary, size_t size, uintptr_t image_st
                 continue;
 
             const char* sym_name  = (const char*) (string_tab + cur_sym->st_name);
+
+            const char* null_check_ptr = sym_name;
+            const char* string_tab_end = string_tab + string_tab_hdr->sh_size;
+
+            bool null_occured = false;
+
+            while (null_check_ptr < string_tab_end)
+            {
+                if (*null_check_ptr == '\0')
+                {
+                    null_occured = true;
+                    break;
+                }
+
+                null_check_ptr++;
+            }
+
+            if (!null_occured)
+                return -E_INVALID_EXE;
+
             uintptr_t   sym_value = (uintptr_t) cur_sym->st_value;
 
-            if ((sym_value < image_start) || (sym_value > image_end))
-                panic("bind_functions: sym_value is outside of image: "
-                                                    "image start = %p "
-                                                    "image end   = %p "
-                                                    "sym_value   = %p ", 
-                                                     (void*) image_start, 
-                                                     (void*) image_end, 
-                                                     (void*) sym_value);  
+            bool is_correct = false;
+
+            for (unsigned iter = 0; iter < bounds_num; iter++)
+            {
+                cprintf("%ld %ld %ld \n", sym_value, bounds[iter].start, bounds[iter].end);
+
+                if ((sym_value > bounds[iter].start) && (sym_value < bounds[iter].end))
+                {    
+                    is_correct = true;
+                    break;
+                }
+            }
+
+            if (is_correct == false)
+                // panic("bind_functions: sym_value is outside of image: sym_name = %s sym_value = %p \n",
+                //                                                       sym_name, (void*) sym_value);
+                continue;
 
             if (*(uintptr_t*) sym_value != 0)
                 continue;
@@ -329,8 +402,8 @@ static int
 load_icode(struct Env *env, uint8_t *binary, size_t size) {
     // LAB 3: Your code here
 
-    uintptr_t image_start = 0;
-    uintptr_t image_end   = 0;
+    static const int Loaded_segments_num = 2;
+    struct Image_bounds bounds[2] = {};
 
     const struct Elf* elf_header = (const struct Elf*) binary;
 
@@ -351,6 +424,7 @@ load_icode(struct Env *env, uint8_t *binary, size_t size) {
 
     const struct Proghdr* ph_table = (const struct Proghdr*) (binary + phoff);
 
+
     for (uint64_t iter = 0; iter < phnum; iter++)
     {
         const struct Proghdr* cur_ph = ph_table + iter;
@@ -358,18 +432,17 @@ load_icode(struct Env *env, uint8_t *binary, size_t size) {
         if (cur_ph->p_type != ELF_PROG_LOAD)
             continue;
 
+        // TODO
+
         uintptr_t p_va   = (uintptr_t) cur_ph->p_va;
         uint64_t  filesz = cur_ph->p_filesz;
         uint64_t  memsz  = cur_ph->p_memsz;
 
-        uintptr_t start = p_va;
-        uintptr_t end   = p_va + memsz;
+        if (iter > Loaded_segments_num)
+            panic("Number of loading segments is more than expected \n");
 
-        if (image_start == 0 || start < image_start)
-            image_start = start;
-
-        if (image_end == 0 || end > image_end)
-            image_end = end;
+        bounds[iter].start = p_va;
+        bounds[iter].end   = p_va + memsz;
 
         memcpy((void*) p_va, binary + cur_ph->p_offset, (size_t) filesz);
         
@@ -380,7 +453,7 @@ load_icode(struct Env *env, uint8_t *binary, size_t size) {
     env->binary = binary;
     env->env_tf.tf_rip = (uintptr_t) elf_header->e_entry;
 
-    int err = bind_functions(env, binary, size, image_start, image_end);
+    int err = bind_functions(env, binary, size, bounds, Loaded_segments_num);
     if (err < 0)
         panic("bind_functions: %i", err);        
 

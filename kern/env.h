@@ -13,6 +13,12 @@ extern struct Env *envs;
 extern struct Env *curenv;
 extern struct Segdesc32 gdt[];
 
+struct Image_bounds
+    {
+        uintptr_t start;
+        uintptr_t end;
+    };
+
 void env_init(void);
 int env_alloc(struct Env **penv, envid_t parent_id, enum EnvType type);
 void env_free(struct Env *env);

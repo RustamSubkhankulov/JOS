@@ -629,7 +629,6 @@ address_by_fname(const struct Dwarf_Addrs *addrs, const char *fname, uintptr_t *
         }
     }
 
-    cprintf("not found AAAA \n");
     return -E_NO_ENT;
 }
 

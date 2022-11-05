@@ -19,6 +19,8 @@ struct Image_bounds
         uintptr_t end;
     };
 
+static const int Loaded_segments_num = 2;
+
 void env_init(void);
 int env_alloc(struct Env **penv, envid_t parent_id, enum EnvType type);
 void env_free(struct Env *env);

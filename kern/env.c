@@ -402,8 +402,7 @@ static int
 load_icode(struct Env *env, uint8_t *binary, size_t size) {
     // LAB 3: Your code here
 
-    static const int Loaded_segments_num = 2;
-    struct Image_bounds bounds[2] = {};
+    struct Image_bounds bounds[Loaded_segments_num] = {};
 
     const struct Elf* elf_header = (const struct Elf*) binary;
 

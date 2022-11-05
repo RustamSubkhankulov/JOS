@@ -114,35 +114,35 @@ InitGraphics (
   // Hint: Use GetMode/SetMode functions.
   //
 
-  UINT32 MaxMode    = GraphicsOutput->Mode->MaxMode;
-  UINT32 MaxResMode = GraphicsOutput->Mode->Mode;
+  // UINT32 MaxMode    = GraphicsOutput->Mode->MaxMode;
+  // UINT32 MaxResMode = GraphicsOutput->Mode->Mode;
 
-  UINT32 HorizontalResolution = GraphicsOutput->Mode->Info->HorizontalResolution;
-  UINT32 VerticalResolution   = GraphicsOutput->Mode->Info->VerticalResolution;
+  // UINT32 HorizontalResolution = GraphicsOutput->Mode->Info->HorizontalResolution;
+  // UINT32 VerticalResolution   = GraphicsOutput->Mode->Info->VerticalResolution;
 
-  for (unsigned int CurMode = 0;
-                    CurMode < MaxMode;
-                    CurMode ++ ) {
-    UINTN SizeOfInfo;
-    EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *Info;
+  // for (unsigned int CurMode = 0;
+  //                   CurMode < MaxMode;
+  //                   CurMode ++ ) {
+  //   UINTN SizeOfInfo;
+  //   EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *Info;
 
-    Status = GraphicsOutput->QueryMode(GraphicsOutput, CurMode, &SizeOfInfo, &Info);
-    if (EFI_ERROR (Status)) {
-      DEBUG ((DEBUG_ERROR, "JOS: InitGraphics - Cannot get mode info - %r\n", Status));
-      continue;
-    }
+  //   Status = GraphicsOutput->QueryMode(GraphicsOutput, CurMode, &SizeOfInfo, &Info);
+  //   if (EFI_ERROR (Status)) {
+  //     DEBUG ((DEBUG_ERROR, "JOS: InitGraphics - Cannot get mode info - %r\n", Status));
+  //     continue;
+  //   }
 
-    if ((HorizontalResolution < Info->HorizontalResolution)
-    &&  (VerticalResolution < Info->VerticalResolution)) {
-      MaxResMode = CurMode;
-    }
-  }
+  //   if ((HorizontalResolution < Info->HorizontalResolution)
+  //   &&  (VerticalResolution < Info->VerticalResolution)) {
+  //     MaxResMode = CurMode;
+  //   }
+  // }
 
-  Status = GraphicsOutput->SetMode(GraphicsOutput, MaxResMode);
-  if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, "JOS: InitGraphics - Cannot set mode - %r\n", Status));
-    return Status;
-  }
+  // Status = GraphicsOutput->SetMode(GraphicsOutput, MaxResMode);
+  // if (EFI_ERROR (Status)) {
+  //   DEBUG ((DEBUG_ERROR, "JOS: InitGraphics - Cannot set mode - %r\n", Status));
+  //   return Status;
+  // }
 
   //
   // Fill screen with black.

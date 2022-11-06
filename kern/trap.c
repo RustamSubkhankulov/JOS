@@ -14,6 +14,8 @@
 
 static struct Taskstate ts;
 
+extern void clock_thdlr(void);
+
 /* For debugging, so print_trapframe can distinguish between printing
  * a saved trapframe and printing the current trapframe and print some
  * additional information in the latter case */
@@ -96,9 +98,19 @@ void
 trap_init(void) {
     // LAB 4: Your code here
 
+    clock_idt_init();
 
     /* Per-CPU setup */
     trap_init_percpu();
+}
+
+void clock_idt_init(void)
+{
+    idt[IRQ_OFFSET + IRQ_CLOCK] = GATE(0, GD_KT, (uint64_t) (&clock_thdlr), 0);
+     //^^^^^^^^^^^^^^^^^^^^^^^^           ^^^^^             ^^^^^^^^^^^^^   ^^
+     // we get interrupt with offset      kernel text       Trapentry.S     Only from kernel
+
+    // lidt(&idt_pd);
 }
 
 /* Initialize and load the per-CPU TSS and IDT */
@@ -213,7 +225,10 @@ trap_dispatch(struct Trapframe *tf) {
         return;
     case IRQ_OFFSET + IRQ_CLOCK:
         // LAB 4: Your code here
-        return;
+        {
+            rtc_timer_pic_handle();
+            return;
+        }
     default:
         print_trapframe(tf);
         if (!(tf->tf_cs & 3))

@@ -14,6 +14,8 @@
 #include <kern/env.h>
 #include <kern/trap.h>
 
+#include <kern/kclock.h>
+
 #define WHITESPACE "\t\r\n "
 #define MAXARGS    16
 
@@ -35,11 +37,8 @@ static struct Command commands[] = {
         {"help", "Display this list of commands", mon_help},
         {"kerninfo", "Display information about the kernel", mon_kerninfo},
         {"backtrace", "Print stack backtrace", mon_backtrace},
-<<<<<<< HEAD
-        {"meow", "Tell you how the cat talks", mon_meow}
-=======
+        {"meow", "Tell you how the cat talks", mon_meow},
         {"dumpcmos", "Print CMOS contents", mon_dumpcmos},
->>>>>>> lab4
 };
 #define NCOMMANDS (sizeof(commands) / sizeof(commands[0]))
 
@@ -112,6 +111,22 @@ mon_dumpcmos(int argc, char **argv, struct Trapframe *tf) {
     // Make sure you understand the values read.
     // Hint: Use cmos_read8()/cmos_write8() functions.
     // LAB 4: Your code here
+
+    for (uint8_t iter = 0; iter < CMOS_SIZE; iter++)
+    {
+        if ((iter % 16) == 0)
+        {
+            if (iter != 0)
+                cprintf("\n");
+
+            cprintf("%02X: ", iter);
+        }
+        uint8_t read = cmos_read8(iter);
+
+        cprintf("%02X ", read);
+    }
+
+    cprintf("\n");
 
     return 0;
 }

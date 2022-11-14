@@ -333,7 +333,7 @@ bind_functions(struct Env *env, uint8_t *binary, size_t size, struct Image_bound
 
             for (unsigned iter = 0; iter < bounds_num; iter++)
             {
-                if ((sym_value > bounds[iter].start) && (sym_value < bounds[iter].end))
+                if ((sym_value >= bounds[iter].start) && (sym_value <= bounds[iter].end))
                 {    
                     is_correct = true;
                     break;

@@ -324,7 +324,7 @@ hpet_enable_interrupts_tim0(void) {
     hpetReg->MAIN_CNT = 0;                                          // set main ct to zero
     hpetReg->TIM0_CONF |= HPET_TN_VAL_SET_CNF;                      // enable to set comparators value
 
-    hpetReg->TIM0_COMP = Peta / (2 * hpetFemto);                    // set appropiate comparator value
+    hpetReg->TIM0_COMP = Peta / (2 * hpetFemto);                // set appropiate comparator value
 
     hpetReg->GEN_CONF |= HPET_ENABLE_CNF;                           // enable HPET
     

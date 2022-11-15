@@ -153,7 +153,10 @@ i386_init(void) {
     env_init();
 
     /* Choose the timer used for scheduling: hpet or pit */
-    timers_schedule("rtc");
+    const char* picked_timer = "hpet0";
+
+    cprintf("Picked timer for schedule: %s\n", picked_timer);
+    timers_schedule(picked_timer);
 
 #ifdef CONFIG_KSPACE
     /* Touch all you want */

@@ -219,6 +219,9 @@ print_regs(struct PushRegs *regs) {
 
 static void
 trap_dispatch(struct Trapframe *tf) {
+
+    // cprintf("trap_dispatch(): trapno %ld\n", tf->tf_trapno - IRQ_OFFSET);
+
     switch (tf->tf_trapno) {
     case IRQ_OFFSET + IRQ_SPURIOUS:
         /* Handle spurious interrupts
@@ -239,6 +242,10 @@ trap_dispatch(struct Trapframe *tf) {
             assert(timer_for_schedule);
             timer_for_schedule->handle_interrupts();
 
+            // cprintf("trap_dispath(): timer/clock - calling sched_yield()\n");
+
+            sched_yield();  // passing control to the scheduler since 
+                            // we have timer/clocl interrupt
             return;
         }
     default:
@@ -288,10 +295,13 @@ trap(struct Trapframe *tf) {
      * scheduled, so we should return to the current environment
      * if doing so makes sense */
     if (curenv && curenv->env_status == ENV_RUNNING)
+    {
+        // cprintf("end of trap(), env_run called \n");
         env_run(curenv);
+    }
     else
     {
-        cprintf("end of trap, shed_yield called \n");
+        // cprintf("end of trap(), shed_yield called \n");
         sched_yield();
     }
 }

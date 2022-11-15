@@ -16,6 +16,7 @@
 static struct Taskstate ts;
 
 extern void clock_thdlr(void);
+extern void timer_thdlr(void);
 
 /* For debugging, so print_trapframe can distinguish between printing
  * a saved trapframe and printing the current trapframe and print some
@@ -112,6 +113,8 @@ void clock_idt_init(void)
     idt[IRQ_OFFSET + IRQ_CLOCK] = GATE(0, GD_KT, (uint64_t) (&clock_thdlr), 0);
      //^^^^^^^^^^^^^^^^^^^^^^^^           ^^^^^             ^^^^^^^^^^^^^   ^^
      // we get interrupt with offset      kernel text       Trapentry.S     Only from kernel
+
+    idt[IRQ_OFFSET + IRQ_TIMER] = GATE(0, GD_KT, (uint64_t) (&timer_thdlr), 0);
 
     // lidt(&idt_pd);
 }
@@ -231,7 +234,11 @@ trap_dispatch(struct Trapframe *tf) {
         // LAB 5: Your code here
         // LAB 4: Your code here
         {
-            rtc_timer_pic_handle();
+            // rtc_timer_pic_handle();
+
+            assert(timer_for_schedule);
+            timer_for_schedule->handle_interrupts();
+
             return;
         }
     default:
@@ -283,5 +290,8 @@ trap(struct Trapframe *tf) {
     if (curenv && curenv->env_status == ENV_RUNNING)
         env_run(curenv);
     else
+    {
+        cprintf("end of trap, shed_yield called \n");
         sched_yield();
+    }
 }

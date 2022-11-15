@@ -72,6 +72,17 @@ acpi_enable(void) {
         ;
 }
 
+static bool check_sum_zero(const void* addr, size_t size)
+{
+    assert(addr);
+    unsigned char sum = 0;
+
+    for (size_t iter = 0; iter < size; iter++)
+        sum += *((unsigned char*) addr + iter);
+
+    return (sum == 0);
+}
+
 static void *
 acpi_find_table(const char *sign) {
     /*
@@ -89,6 +100,35 @@ acpi_find_table(const char *sign) {
 
     // LAB 5: Your code here
 
+    assert(sign);
+
+    RSDP* rsdp = get_rsdp();
+    if (strncmp(RSDP_sign, sign, sizeof(RSDP_sign)) == 0)
+        return rsdp;        
+
+    XSDT* xsdt = get_xsdt(rsdp);
+    if (strncmp(XSDT_sign, sign, sizeof(XSDT_sign)) == 0)
+        return xsdt;
+
+    uint64_t xsdt_num_entries = (xsdt->h.Length - sizeof(ACPISDTHeader)) / sizeof(uint64_t);
+
+    for (uint64_t iter = 0; iter < xsdt_num_entries; iter++)
+    {
+        ACPISDTHeader* cur_dh    = (ACPISDTHeader*) xsdt->PointerToOtherSDT[iter];
+        ACPISDTHeader* dh_mapped = (ACPISDTHeader*) mmio_map_region((physaddr_t) cur_dh, sizeof(ACPISDTHeader));
+
+        if (strncmp(sign, dh_mapped->Signature, sizeof(dh_mapped->Signature)) != 0)
+            continue;
+
+        size_t table_size = (size_t) dh_mapped->Length;
+        dh_mapped = (ACPISDTHeader*) mmio_remap_last_region((physaddr_t) cur_dh, dh_mapped, sizeof(ACPISDTHeader), table_size);
+
+        if (!check_sum_zero(dh_mapped, table_size))
+            panic("%s incorrect checksum\n", dh_mapped->Signature);
+
+        return dh_mapped;      
+    }
+
     return NULL;
 }
 
@@ -101,7 +141,7 @@ get_fadt(void) {
     //       not always as their names
 
     static FADT *kfadt;
-
+    kfadt = (FADT*) acpi_find_table(FADT_sign);
     return kfadt;
 }
 
@@ -112,8 +152,63 @@ get_hpet(void) {
     // (use acpi_find_table)
 
     static HPET *khpet;
-
+    khpet = (HPET*) acpi_find_table(HPET_sign);
     return khpet;
+}
+
+RSDP *
+get_rsdp(void) {
+
+    static RSDP* rsdp_saved = NULL;
+
+    if (rsdp_saved)
+        return rsdp_saved;
+
+    RSDP*  rsdp_ptr = (RSDP*) uefi_lp->ACPIRoot;
+    assert(rsdp_ptr); 
+
+    size_t rsdp_size = sizeof(RSDP);
+    size_t rsdp_first_checksum_size = 20UL;
+
+    RSDP* rsdp_mapped = (RSDP*) mmio_map_region((physaddr_t) rsdp_ptr, rsdp_size); 
+
+    if (strncmp(rsdp_mapped->Signature, RSDP_sign, sizeof(RSDP_sign)))
+        panic("RSDP incorrect signature\n");
+
+    if (!check_sum_zero(rsdp_mapped, rsdp_first_checksum_size))
+        panic("RSDP first checksum failed\n");
+
+    if (!check_sum_zero(rsdp_mapped, rsdp_size))
+        panic("RSDP second checksum failed\n");
+
+    rsdp_saved = rsdp_mapped;
+    return rsdp_mapped;
+}
+
+XSDT* 
+get_xsdt(RSDP* rsdp) {
+
+    assert(rsdp);
+
+    static XSDT* xsdt_saved = NULL;
+
+    if (xsdt_saved)
+        return xsdt_saved;
+
+    XSDT* xsdt_addr   = (XSDT*) rsdp->XsdtAddress;
+    XSDT* xsdt_mapped = (XSDT*) mmio_map_region((physaddr_t) xsdt_addr, sizeof(ACPISDTHeader));
+
+    if (strncmp(xsdt_mapped->h.Signature, XSDT_sign, sizeof(XSDT_sign)))
+        panic("XSDT incorrect signature\n");    
+
+    uint32_t xsdt_len = xsdt_mapped->h.Length;
+    xsdt_mapped = (XSDT*) mmio_remap_last_region((physaddr_t) xsdt_addr, xsdt_mapped, sizeof(ACPISDTHeader), xsdt_len);
+
+    if (!check_sum_zero(xsdt_mapped, xsdt_len))
+        panic("XSDT incorrect checksum\n");
+
+    xsdt_saved = xsdt_mapped;
+    return xsdt_mapped;
 }
 
 /* Getting physical HPET timer address from its table. */
@@ -214,11 +309,54 @@ void
 hpet_enable_interrupts_tim0(void) {
     // LAB 5: Your code here
 
+    nmi_disable();
+    hpetReg->GEN_CONF &= (~HPET_ENABLE_CNF);                        // disable HPET
+    hpetReg->GEN_CONF |= HPET_LEG_RT_CNF;                           // enable LegacyReplacement
+
+    if (!(hpetReg->TIM0_CONF & HPET_TN_PER_INT_CAP))
+        panic("Timer 0 isn't supporting periodic interrupts\n");    // panic if periodic interrupts are not supported
+    hpetReg->TIM0_CONF |= HPET_TN_TYPE_CNF;                         // enable periodic interrupts
+
+    hpetReg->TIM0_CONF |= HPET_TN_INT_ENB_CNF;                      // set to enable timer to generate interrupts 
+
+    // After that, we need to write down value to counter as it's described in specification
+
+    hpetReg->MAIN_CNT = 0;                                          // set main ct to zero
+    hpetReg->TIM0_CONF |= HPET_TN_VAL_SET_CNF;                      // enable to set comparators value
+
+    hpetReg->TIM0_COMP = Peta / (2 * hpetFemto);                    // set appropiate comparator value
+
+    hpetReg->GEN_CONF |= HPET_ENABLE_CNF;                           // enable HPET
+    
+    pic_irq_unmask(IRQ_TIMER);                                      // unmask 
+    nmi_enable();                                                   
 }
 
 void
 hpet_enable_interrupts_tim1(void) {
     // LAB 5: Your code here
+
+    nmi_disable();
+    hpetReg->GEN_CONF &= (~HPET_ENABLE_CNF);                        // disable HPET
+    hpetReg->GEN_CONF |= HPET_LEG_RT_CNF;                           // enable LegacyReplacement
+
+    if (!(hpetReg->TIM1_CONF & HPET_TN_PER_INT_CAP))
+        panic("Timer 1 isn't supporting periodic interrupts\n");   // panic if periodic interrupts are not supported
+    hpetReg->TIM1_CONF |= HPET_TN_TYPE_CNF;                         // enable periodic interrupts
+
+    hpetReg->TIM1_CONF |= HPET_TN_INT_ENB_CNF;                      // set to enable timer to generate interrupts 
+
+    // After that, we need to write down value to counter as it's described in specification
+
+    hpetReg->MAIN_CNT = 0;                                          // set main ct to zero
+    hpetReg->TIM1_CONF |= HPET_TN_VAL_SET_CNF;                      // enable to set comparators value
+
+    hpetReg->TIM1_COMP = (3 *Peta) / (2 * hpetFemto);               // set appropiate comparator value
+
+    hpetReg->GEN_CONF |= HPET_ENABLE_CNF;                           // enable HPET
+    
+    pic_irq_unmask(IRQ_CLOCK);                                      // unmask 
+    nmi_enable();   
 }
 
 void

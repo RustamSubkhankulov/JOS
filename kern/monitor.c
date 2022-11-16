@@ -39,11 +39,14 @@ struct Command {
 };
 
 static struct Command commands[] = {
-        {"help", "Display this list of commands", mon_help},
-        {"kerninfo", "Display information about the kernel", mon_kerninfo},
-        {"backtrace", "Print stack backtrace", mon_backtrace},
-        {"meow", "Tell you how the cat talks", mon_meow},
-        {"dumpcmos", "Print CMOS contents", mon_dumpcmos},
+        {"help",        "Display this list of commands",         mon_help     },
+        {"kerninfo",    "Display information about the kernel",  mon_kerninfo },
+        {"backtrace",   "Print stack backtrace",                 mon_backtrace},
+        {"meow",        "Tell you how the cat talks",            mon_meow     },
+        {"dumpcmos",    "Print CMOS contents",                   mon_dumpcmos },
+        {"timer_start", "Starts timer",                          mon_start    },
+        {"timer_stop",  "Stops timer and prints elapsed time",   mon_stop     },
+        {"timer_freq",  "Measures and prints out cpu frequency", mon_frequency}
 };
 #define NCOMMANDS (sizeof(commands) / sizeof(commands[0]))
 
@@ -140,6 +143,24 @@ mon_dumpcmos(int argc, char **argv, struct Trapframe *tf) {
 // LAB 5: Your code here:
 
 /* Kernel monitor command interpreter */
+
+int mon_start(int argc, char **argv, struct Trapframe *tf) {
+
+    timer_start(argv[1]);
+    return 0;
+}
+
+int mon_stop(int argc, char **argv, struct Trapframe *tf) {
+
+    timer_stop();
+    return 0;
+}
+
+int mon_frequency(int argc, char **argv, struct Trapframe *tf) {
+
+    timer_cpu_frequency(argv[1]);
+    return 0;
+}
 
 static int
 runcmd(char *buf, struct Trapframe *tf) {

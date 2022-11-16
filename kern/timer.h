@@ -177,6 +177,9 @@ typedef struct {
     uint8_t Reserved3[3];
 } FADT;
 
+#define ACPI_FADT_FLAG_TMR_VAL_EXT (1 << 8)
+#define ACPI_PM1A_ST_REG_TMR_STS   (1 << 0)
+
 #pragma pack(pop)
 
 void acpi_enable(void);

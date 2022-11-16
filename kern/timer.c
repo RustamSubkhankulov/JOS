@@ -324,7 +324,7 @@ hpet_enable_interrupts_tim0(void) {
     hpetReg->MAIN_CNT = 0;                                          // set main ct to zero
     hpetReg->TIM0_CONF |= HPET_TN_VAL_SET_CNF;                      // enable to set comparators value
 
-    hpetReg->TIM0_COMP = Peta / (2 * hpetFemto);                // set appropiate comparator value
+    hpetReg->TIM0_COMP = Peta / (2 * hpetFemto);                    // set appropiate comparator value
 
     hpetReg->GEN_CONF |= HPET_ENABLE_CNF;                           // enable HPET
     
@@ -378,6 +378,26 @@ hpet_cpu_frequency(void) {
 
     // LAB 5: Your code here
 
+    uint64_t tsc1 = 0, tsc2    = 0;
+    const uint64_t measurement = 100000;
+
+    uint64_t hpet_start_main_cnt = hpetReg->MAIN_CNT;
+    uint64_t hpet_delta = 0;
+    
+    tsc1 = read_tsc();
+
+    do 
+    {
+        asm volatile("pause");
+        hpet_delta = hpetReg->MAIN_CNT - hpet_start_main_cnt;
+
+    } while (hpet_delta < measurement);
+    
+    tsc2 = read_tsc();
+
+    uint64_t tsc_delta = tsc2 - tsc1;
+    cpu_freq = hpetFreq * tsc_delta / hpet_delta;
+
     return cpu_freq;
 }
 
@@ -385,6 +405,14 @@ uint32_t
 pmtimer_get_timeval(void) {
     FADT *fadt = get_fadt();
     return inl(fadt->PMTimerBlock);
+}
+
+bool
+pm_timer_tm_sts(void) {
+    FADT *fadt = get_fadt();
+    uint8_t* pm1a_st_reg = (uint8_t*) ((uintptr_t) fadt->PM1aEventBlock);
+
+    return (*pm1a_st_reg & ACPI_PM1A_ST_REG_TMR_STS);
 }
 
 /* Calculate CPU frequency in Hz with the help with ACPI PowerManagement timer.
@@ -395,6 +423,41 @@ pmtimer_cpu_frequency(void) {
     static uint64_t cpu_freq;
 
     // LAB 5: Your code here
+
+    // Firstly we need to get size of ACPI PM timer in bits
+    // 0 - 24 bits, 1 - 32 bits
+    FADT* fadt = get_fadt();
+    bool tmr_val_ext_flag_set = (fadt->Flags & ACPI_FADT_FLAG_TMR_VAL_EXT);
+
+    uint64_t overflow_value = (tmr_val_ext_flag_set)? 0xFFFFFFFF : 0xFFFFFF;
+
+    uint64_t tsc1 = 0, tsc2    = 0;
+    const uint64_t measurement = 100000;
+
+    uint64_t pmtimer_start = (uint64_t) pmtimer_get_timeval();
+    uint64_t pmtimer_delta = 0;
+
+    uint64_t overflow_delta = 0;
+
+    tsc1 = read_tsc();
+
+    do 
+    {
+        asm volatile("pause");
+
+        uint64_t cur_pmtimer = (uint64_t) pmtimer_get_timeval();
+
+        if (pm_timer_tm_sts() && cur_pmtimer < overflow_value)
+            overflow_delta += overflow_value;
+
+        pmtimer_delta = cur_pmtimer + overflow_delta - pmtimer_start;
+
+    } while (pmtimer_delta < measurement);
+    
+    tsc2 = read_tsc(); 
+
+    uint64_t tsc_delta = tsc2 - tsc1;
+    cpu_freq = PM_FREQ * tsc_delta / pmtimer_delta;
 
     return cpu_freq;
 }

@@ -3,6 +3,7 @@
 #include <inc/x86.h>
 #include <inc/stdio.h>
 #include <inc/string.h>
+#include <inc/assert.h>
 
 #include <kern/tsc.h>
 #include <kern/timer.h>
@@ -193,10 +194,79 @@ print_timer_error(void) {
 
 // LAB 5: Your code here:
 
+enum TimerType
+{
+    RTC   = 0, // enumeration values equal indexes in timertab array
+    PIT   = 1,
+    PM    = 2,
+    HPET0 = 3,
+    HPET1 = 4,
+    UNDEF = 5
+};
+
+static enum TimerType
+get_timer_type(const char* name) {
+
+    assert(name);
+
+    if (strncmp(name, "hpet0", sizeof("hpet0")) == 0)
+    {
+        return HPET0;
+    }
+    else if (strncmp(name, "hpet1", sizeof("hpet1")) == 0)
+    {
+        return HPET1;
+    }
+    else if (strncmp(name, "pit", sizeof("pit")) == 0)
+    {
+        return PIT;
+    }
+    else if (strncmp(name, "pm", sizeof("pm")) == 0)
+    {
+        return PM;
+    }
+    else if (strncmp(name, "rtc", sizeof("rtc")) == 0)
+    {
+        return RTC;
+    }
+    else 
+    {
+        return UNDEF;
+    }
+
+    return UNDEF;
+}
+
 static bool timer_started = 0;
 static int timer_id = -1;
 static uint64_t timer = 0;
 static uint64_t freq = 0;
+
+static uint64_t 
+get_cpu_frequency(enum TimerType type)
+{
+    switch(type)
+    {
+        case HPET0:
+        case HPET1:
+        case PIT:
+        case PM:
+        {
+            return timertab[type].get_cpu_freq();
+        }
+        case RTC:
+        {
+            cprintf("Cannot calculate cpu freq using RTC\n");
+            return 0;
+        }
+        case UNDEF:
+        default:
+        {
+            cprintf("Unsupported timer type: %d\n", (int) type);
+            return 0;
+        }
+    }
+}
 
 void
 timer_start(const char *name) {
@@ -204,12 +274,62 @@ timer_start(const char *name) {
     (void)timer_id;
     (void)timer;
     (void)freq;
-}
 
-void
-timer_stop(void) {
+    assert(name);
+
+    // if (timer_started)
+    // {
+    //     cprintf("Timer is already started\n");
+    //     return;
+    // }
+
+    int type = (int) get_timer_type(name);
+    if (type == UNDEF)
+    {
+        cprintf("Unsupported timer type: %s\n", name);
+        return;
+    }
+    else if (type == RTC)
+    {
+        cprintf("timer_start does not support rtc timer\n");
+        return;
+    }
+
+    timer_id = type;
+
+    timer = read_tsc();
+    timer_started = true;
+
+    return;
 }
 
 void
 timer_cpu_frequency(const char *name) {
+
+    assert(name);
+    enum TimerType type = get_timer_type(name);
+
+    cprintf("%ld\n",get_cpu_frequency(type));
+    return;
+}
+
+void
+timer_stop(void) {
+
+    if (!timer_started || timer_id == -1)
+    {
+        cprintf("Timer Error\n");
+        return;
+    }
+
+    uint64_t tsc   = read_tsc();
+    uint64_t ticks = tsc - timer;
+
+    uint64_t frequency = get_cpu_frequency(timer_id);
+    uint64_t elapsed_time = ticks / frequency;
+
+    cprintf("%ld\n", elapsed_time);
+
+    timer_started = false;
+    timer_id      = -1;
 }

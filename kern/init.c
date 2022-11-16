@@ -154,8 +154,7 @@ i386_init(void) {
 
     /* Choose the timer used for scheduling: hpet or pit */
     const char* picked_timer = "hpet0";
-
-    cprintf("Picked timer for schedule: %s\n", picked_timer);
+    // cprintf("Picked timer for schedule: %s\n", picked_timer);
     timers_schedule(picked_timer);
 
 #ifdef CONFIG_KSPACE
@@ -180,6 +179,9 @@ i386_init(void) {
     ENV_CREATE(user_hello, ENV_TYPE_USER);
 #endif /* TEST* */
 #endif
+
+    // Break to monitor
+    // assert(false);
 
     /* Schedule and run the first user environment! */
     sched_yield();

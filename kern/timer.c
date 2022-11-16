@@ -140,7 +140,11 @@ get_fadt(void) {
     // HINT: ACPI table signatures are
     //       not always as their names
 
-    static FADT *kfadt;
+    static FADT *kfadt = NULL;
+
+    if (kfadt)
+        return kfadt;
+
     kfadt = (FADT*) acpi_find_table(FADT_sign);
     return kfadt;
 }
@@ -151,7 +155,11 @@ get_hpet(void) {
     // LAB 5: Your code here
     // (use acpi_find_table)
 
-    static HPET *khpet;
+    static HPET *khpet = NULL;
+
+    if (khpet)
+        return khpet;
+
     khpet = (HPET*) acpi_find_table(HPET_sign);
     return khpet;
 }

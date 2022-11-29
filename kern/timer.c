@@ -106,6 +106,8 @@ acpi_find_table(const char *sign) {
     if (strncmp(RSDP_sign, sign, sizeof(RSDP_sign)) == 0)
         return rsdp;        
 
+    // check revision
+
     XSDT* xsdt = get_xsdt(rsdp);
     if (strncmp(XSDT_sign, sign, sizeof(XSDT_sign)) == 0)
         return xsdt;
@@ -322,7 +324,7 @@ hpet_enable_interrupts_tim0(void) {
     hpetReg->GEN_CONF |= HPET_LEG_RT_CNF;                           // enable LegacyReplacement
 
     if (!(hpetReg->TIM0_CONF & HPET_TN_PER_INT_CAP))
-        panic("Timer 0 isn't supporting periodic interrupts\n");    // panic if periodic interrupts are not supported
+        panic("Timer 0 doesn't support periodic interrupts\n");     // panic if periodic interrupts are not supported
     hpetReg->TIM0_CONF |= HPET_TN_TYPE_CNF;                         // enable periodic interrupts
 
     hpetReg->TIM0_CONF |= HPET_TN_INT_ENB_CNF;                      // set to enable timer to generate interrupts 
@@ -349,7 +351,7 @@ hpet_enable_interrupts_tim1(void) {
     hpetReg->GEN_CONF |= HPET_LEG_RT_CNF;                           // enable LegacyReplacement
 
     if (!(hpetReg->TIM1_CONF & HPET_TN_PER_INT_CAP))
-        panic("Timer 1 isn't supporting periodic interrupts\n");   // panic if periodic interrupts are not supported
+        panic("Timer 1 doesn't support periodic interrupts\n");    // panic if periodic interrupts are not supported
     hpetReg->TIM1_CONF |= HPET_TN_TYPE_CNF;                         // enable periodic interrupts
 
     hpetReg->TIM1_CONF |= HPET_TN_INT_ENB_CNF;                      // set to enable timer to generate interrupts 
@@ -386,7 +388,7 @@ hpet_cpu_frequency(void) {
 
     // LAB 5: Your code here
 
-    uint64_t tsc1 = 0, tsc2    = 0;
+    uint64_t tsc1 = 0, tsc2 = 0;
     const uint64_t measurement = 100000;
 
     uint64_t hpet_start_main_cnt = hpetReg->MAIN_CNT;
@@ -415,14 +417,6 @@ pmtimer_get_timeval(void) {
     return inl(fadt->PMTimerBlock);
 }
 
-bool
-pm_timer_tm_sts(void) {
-    FADT *fadt = get_fadt();
-    uint8_t* pm1a_st_reg = (uint8_t*) ((uintptr_t) fadt->PM1aEventBlock);
-
-    return (*pm1a_st_reg & ACPI_PM1A_ST_REG_TMR_STS);
-}
-
 /* Calculate CPU frequency in Hz with the help with ACPI PowerManagement timer.
  * HINT Use pmtimer_get_timeval function and do not forget that ACPI PM timer
  *      can be 24-bit or 32-bit. */
@@ -440,12 +434,13 @@ pmtimer_cpu_frequency(void) {
     uint64_t overflow_value = (tmr_val_ext_flag_set)? 0xFFFFFFFF : 0xFFFFFF;
 
     uint64_t tsc1 = 0, tsc2    = 0;
-    const uint64_t measurement = 100000;
+    const uint64_t measurement = 10000000;
 
     uint64_t pmtimer_start = (uint64_t) pmtimer_get_timeval();
     uint64_t pmtimer_delta = 0;
 
     uint64_t overflow_delta = 0;
+    uint64_t prev_pmtimer   = 0;
 
     tsc1 = read_tsc();
 
@@ -455,9 +450,13 @@ pmtimer_cpu_frequency(void) {
 
         uint64_t cur_pmtimer = (uint64_t) pmtimer_get_timeval();
 
-        if (pm_timer_tm_sts() && cur_pmtimer < overflow_value)
+        if (cur_pmtimer < prev_pmtimer)
+        {
+            cprintf("pm timer overflow \n\n");
             overflow_delta += overflow_value;
+        }
 
+        prev_pmtimer  = cur_pmtimer;
         pmtimer_delta = cur_pmtimer + overflow_delta - pmtimer_start;
 
     } while (pmtimer_delta < measurement);
@@ -466,6 +465,8 @@ pmtimer_cpu_frequency(void) {
 
     uint64_t tsc_delta = tsc2 - tsc1;
     cpu_freq = PM_FREQ * tsc_delta / pmtimer_delta;
+
+    // cprintf("tsc1 %lu tsc2  %lu pmtimer_delta %lu overflow_delta %lu overflow_value %lu\n", tsc1, tsc2, pmtimer_delta, overflow_delta, overflow_value);
 
     return cpu_freq;
 }

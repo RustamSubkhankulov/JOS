@@ -181,7 +181,7 @@ i386_init(void) {
 #endif
 
     // Break to monitor
-    // assert(false);
+    assert(false);
 
     /* Schedule and run the first user environment! */
     sched_yield();

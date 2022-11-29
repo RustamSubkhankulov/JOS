@@ -277,12 +277,6 @@ timer_start(const char *name) {
 
     assert(name);
 
-    // if (timer_started)
-    // {
-    //     cprintf("Timer is already started\n");
-    //     return;
-    // }
-
     int type = (int) get_timer_type(name);
     if (type == UNDEF)
     {

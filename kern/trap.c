@@ -244,7 +244,7 @@ trap_dispatch(struct Trapframe *tf) {
 
             // cprintf("trap_dispath(): timer/clock - calling sched_yield()\n");
 
-            // sched_yield();  // passing control to the scheduler since 
+            sched_yield();  // passing control to the scheduler since 
                             // we have timer/clocl interrupt
             return;
         }

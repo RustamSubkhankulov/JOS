@@ -48,7 +48,8 @@ static struct Command commands[] = {
         {"dumpcmos",    "Print CMOS contents",                   mon_dumpcmos },
         {"timer_start", "Starts timer",                          mon_start    },
         {"timer_stop",  "Stops timer and prints elapsed time",   mon_stop     },
-        {"timer_freq",  "Measures and prints out cpu frequency", mon_frequency}
+        {"timer_freq",  "Measures and prints out cpu frequency", mon_frequency},
+        {"memory",      "Dumps memory lists of free pages",      mon_memory   }
 };
 #define NCOMMANDS (sizeof(commands) / sizeof(commands[0]))
 
@@ -166,6 +167,12 @@ int mon_stop(int argc, char **argv, struct Trapframe *tf) {
 int mon_frequency(int argc, char **argv, struct Trapframe *tf) {
 
     timer_cpu_frequency(argv[1]);
+    return 0;
+}
+
+int mon_memory(int argc, char **argv, struct Trapframe *tf) {
+
+    dump_memory_lists();
     return 0;
 }
 

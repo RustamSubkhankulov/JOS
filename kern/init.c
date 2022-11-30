@@ -155,7 +155,7 @@ i386_init(void) {
     env_init();
 
     /* Choose the timer used for scheduling: hpet or pit */
-    const char* picked_timer = "hpet0";
+    const char* picked_timer = "rtc";
     // cprintf("Picked timer for schedule: %s\n", picked_timer);
     timers_schedule(picked_timer);
 

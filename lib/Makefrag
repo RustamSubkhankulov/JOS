@@ -18,7 +18,7 @@ LIB_OBJFILES := $(patsubst lib/%.S, $(OBJDIR)/lib/%.o, $(LIB_OBJFILES))
 lib/random_data.c:
 	@echo + GEN $@
 	@mkdir -p $(@D)
-	$(shell xxd -i -l 100 /dev/urandom > $@)
+	xxd -i -l 100 /dev/urandom $@
 
 $(OBJDIR)/lib/%.o: lib/%.c $(OBJDIR)/.vars.USER_CFLAGS
 	@echo + cc[USER] $<

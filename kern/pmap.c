@@ -385,7 +385,7 @@ attach_region(uintptr_t start_r, uintptr_t end_r, enum PageState type) {
 
         // cprintf("page_lookup() in attach_region(): start: %lx class %x size %llx \n", start_r, class, CLASS_SIZE(class));
 
-        struct Page* allocated = page_lookup(NULL, start_r, class, ALLOCATABLE_NODE, 1);
+        struct Page* allocated = page_lookup(NULL, start_r, class, type, 1);
 
         if (allocated == NULL)
             panic("page_lookup() failed. addr: %lu, class:%d, type: ALLOCATABLE_NODE, alloc:1 \n", start_r, class);
@@ -637,6 +637,8 @@ detect_memory(void) {
      *  end of kernel executable image.)*/
     // LAB 6: Your code here
 
+    cprintf("kernel end %lx \n", PADDR(end));
+
     /* Detech memory via ether UEFI or CMOS */
     if (uefi_lp && uefi_lp->MemoryMap) {
         EFI_MEMORY_DESCRIPTOR *start_r = (void *)uefi_lp->MemoryMap;
@@ -677,6 +679,8 @@ detect_memory(void) {
                 start_r = (void *)((uint8_t *)start_r + uefi_lp->MemoryMapDescriptorSize);
                 continue;
             }
+
+            // cprintf("attaching memory region: PhysStart ") ??
 
             attach_region(start_r->PhysicalStart, start_r->PhysicalStart + memory_range_size, type);
 

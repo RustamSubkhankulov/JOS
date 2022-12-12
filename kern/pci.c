@@ -11,8 +11,10 @@ void init_pci(void)
     if (trace_pci)
         cprintf("PCI initialization started. \n");
 
+    int count = enumerate_pci_devices();
+
     if (trace_pci)
-        cprintf("Enumerating PCI devices. \n");
+        cprintf("Enumerating PCI devices. Total count=%d \n", count);
 
     if (trace_pci)
         cprintf("PCI initialization successfully finished. \n");
@@ -52,24 +54,22 @@ uint16_t get_vendor_id(uint8_t bus, uint8_t dev, uint8_t function)
 bool check_pci_device(uint8_t bus, uint8_t device, uint8_t function)
 {
     uint16_t vendor_id = get_vendor_id(bus, device, function);
+    bool present = (vendor_id != NON_EXISTING_VENDOR_ID);
 
-    if (trace_pci_more)
+    if (trace_pci_more && present)
     {
-        cprintf("Checking device: bus=0x%03x device=0x%02x function=0x%x. ", 
-                                                     bus, device, function);
+        cprintf("Checking device at: bus=0x%03x device=0x%02x function=0x%x. ", 
+                                                        bus, device, function);
         cprintf("Vendor_id=0x%04x. \n", vendor_id);
-
-        cprintf("Device exists: %s. \n", (vendor_id != NON_EXISTING_VENDOR_ID)? "yes": "no");
     }
 
-    return (vendor_id != NON_EXISTING_VENDOR_ID);
+    return present;
 }
 
 
 // performs Brute Force scan
 int enumerate_pci_devices(void) 
 {
-    bool present = 0;
     int count = 0;
 
     for (uint16_t bus = 0; bus < MAX_BUS; bus++)
@@ -108,7 +108,7 @@ int enumerate_pci_devices(void)
 uint8_t pci_config_read8(const pci_dev_t* pci_dev, uint8_t offset)
 {
     assert(pci_dev);
-    return (uint8_t) (pci_config_read_dword(pci_dev, offset) >> ((offset & 0x3) * 8) & 0xFF);
+    return (uint8_t) (pci_config_read32(pci_dev, offset) >> ((offset & 0x3) * 8) & 0xFF);
 }
 
 
@@ -126,7 +126,7 @@ uint32_t pci_config_read32(const pci_dev_t* pci_dev, uint8_t offset)
                   | ((uint32_t) pci_dev->bus_number)      << PCI_CONF_ADDR_PORT_BUS_OFFS
                   | ((uint32_t) pci_dev->device_number)   << PCI_CONF_ADDR_PORT_DEV_OFFS
                   | ((uint32_t) pci_dev->function_number) << PCI_CONF_ADDR_PORT_FUN_OFFS
-                  | offset & PCI_REGISTER_OFFS_MASK;
+                  | (offset & PCI_REGISTER_OFFS_MASK);
 
     outl(PCI_CONFIGURATION_ADDR_PORT, addr);
     return inl(PCI_CONFIGURATION_DATA_PORT);
@@ -160,7 +160,7 @@ void pci_config_write32(const pci_dev_t* pci_dev, uint8_t offset, uint32_t val)
                   | ((uint32_t) pci_dev->bus_number)      << PCI_CONF_ADDR_PORT_BUS_OFFS
                   | ((uint32_t) pci_dev->device_number)   << PCI_CONF_ADDR_PORT_DEV_OFFS
                   | ((uint32_t) pci_dev->function_number) << PCI_CONF_ADDR_PORT_FUN_OFFS
-                  | offset & PCI_REGISTER_OFFS_MASK;
+                  | (offset & PCI_REGISTER_OFFS_MASK);
 
     outl(PCI_CONFIGURATION_ADDR_PORT, addr);
     outl(PCI_CONFIGURATION_DATA_PORT, val);

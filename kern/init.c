@@ -184,7 +184,8 @@ i386_init(void) {
 #endif /* TEST* */
 #endif
 
-    // Initialize nic
+    // Initialize PCI devices & net
+    init_pci();
     init_net();
 
     // Break to monitor not to run envs

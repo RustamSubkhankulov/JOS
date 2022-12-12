@@ -92,7 +92,7 @@ typedef struct PCI_dev
 #define PCI_CONF_SPACE_TYPE_1_PREF_MEM_BASE   0x24 // 2    9
 #define PCI_CONF_SPACE_TYPE_1_PREF_MEM_LIM    0x26 // 2    9
 #define PCI_CONF_SPACE_TYPE_1_PREF_BASE_U32   0x28 // 4    A
-#define PCI_CONF_SPACE_TYPE_1_PREF_BASE_U32   0x2C // 4    B
+#define PCI_CONF_SPACE_TYPE_1_PREF_LIM_U32    0x2C // 4    B
 #define PCI_CONF_SPACE_TYPE_1_IO_BASE_U16     0x30 // 2    C
 #define PCI_CONF_SPACE_TYPE_1_IO_LIM_U16      0x32 // 2    C
 #define PCI_CONF_SPACE_TYPE_1_CAPABILITIES    0x34 // 1    D

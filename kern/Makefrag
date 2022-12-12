@@ -12,30 +12,32 @@ KERN_LDFLAGS := $(LDFLAGS) -T kern/kernel.ld -nostdlib
 # We snatch the use of a couple handy source files
 # from the lib directory, to avoid gratuitous code duplication.
 KERN_SRCFILES := kern/bootstrap.S \
-			kern/entry.S \
-			kern/init.c \
-			kern/console.c \
-			kern/dwarf.c \
-			kern/dwarf_lines.c \
-			kern/monitor.c \
-			kern/pmap.c \
-			kern/env.c \
-			kern/kclock.c \
-			kern/picirq.c \
-			kern/printf.c \
-			kern/trap.c \
-			kern/trapentry.S \
-			kern/timer.c \
-			kern/sched.c \
-			kern/syscall.c \
-			kern/kdebug.c \
-			lib/printfmt.c \
-			lib/readline.c \
-			lib/string.c \
-			kern/tsc.c \
-			kern/uefi.c \
-			kern/uefiasm.S \
-			kern/spinlock.c
+			kern/entry.S          \
+			kern/init.c           \
+			kern/console.c        \
+			kern/dwarf.c          \
+			kern/dwarf_lines.c    \
+			kern/monitor.c        \
+			kern/pmap.c           \
+			kern/env.c            \
+			kern/kclock.c         \
+			kern/picirq.c         \
+			kern/printf.c         \
+			kern/trap.c           \
+			kern/trapentry.S      \
+			kern/timer.c          \
+			kern/sched.c          \
+			kern/syscall.c        \
+			kern/kdebug.c         \
+			lib/printfmt.c        \
+			lib/readline.c        \
+			lib/string.c          \
+			kern/tsc.c            \
+			kern/uefi.c           \
+			kern/uefiasm.S        \
+			kern/spinlock.c       \
+			kern/net.c 	          \
+			kern/pci.c
 
 ifeq ($(CONFIG_KSPACE),y)
 KERN_SRCFILES += kern/alloc.c

@@ -18,6 +18,8 @@
 #include <kern/kclock.h>
 #include <kern/kdebug.h>
 #include <kern/traceopt.h>
+#include <kern/net.h>
+#include <kern/pci.h>
 
 void
 timers_init(void) {
@@ -182,7 +184,10 @@ i386_init(void) {
 #endif /* TEST* */
 #endif
 
-    // Break to monitor
+    // Initialize nic
+    init_net();
+
+    // Break to monitor not to run envs
     assert(false);
 
     /* Schedule and run the first user environment! */

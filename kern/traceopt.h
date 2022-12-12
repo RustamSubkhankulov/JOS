@@ -50,4 +50,12 @@
 #define trace_init 1
 #endif
 
+#ifndef trace_pci
+#define trace_pci 1
+#endif 
+
+#ifndef trace_net
+#define trace_net 1
+#endif 
+
 #endif

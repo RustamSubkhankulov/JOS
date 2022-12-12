@@ -223,6 +223,8 @@ IMAGES = $(OVMF_FIRMWARE) $(JOS_LOADER) $(OBJDIR)/kern/kernel $(JOS_ESP)/EFI/BOO
 QEMUOPTS += -bios $(OVMF_FIRMWARE)
 # QEMUOPTS += -debugcon file:$(UEFIDIR)/debug.log -global isa-debugcon.iobase=0x402
 
+QEMUITASKOPTS = -nic socket,mcast=230.0.0.1:1234,model=virtio-net-pci
+
 define POST_CHECKOUT
 #!/bin/sh -x
 make clean
@@ -299,6 +301,31 @@ qemu-nox-gdb: $(IMAGES) pre-qemu
 	@echo "*** Now run 'gdb'." 1>&2
 	@echo "***"
 	$(QEMU) -display none $(QEMUOPTS) -S
+
+#------------------
+
+qemu-itask: $(IMAGES) pre-qemu
+	$(QEMU) $(QEMUOPTS) $(QEMUITASKOPTS)
+
+qemu-nox-itask: $(IMAGES) pre-qemu
+	@echo "***"
+	@echo "*** Use Ctrl-a x to exit qemu"
+	@echo "***"
+	$(QEMU) -display none $(QEMUOPTS) $(QEMUITASKOPTS)
+
+qemu-gdb-itask: $(IMAGES) pre-qemu
+	@echo "***"
+	@echo "*** Now run 'gdb'." 1>&2
+	@echo "***"
+	$(QEMU) $(QEMUOPTS) $(QEMUITASKOPTS) -S
+
+qemu-nox-gdb-itask: $(IMAGES) pre-qemu
+	@echo "***"
+	@echo "*** Now run 'gdb'." 1>&2
+	@echo "***"
+	$(QEMU) -display none $(QEMUOPTS) $(QEMUITASKOPTS) -S
+
+#------------------
 
 print-qemu:
 	@echo $(QEMU)

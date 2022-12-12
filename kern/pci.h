@@ -40,7 +40,30 @@ typedef struct PCI_dev
     uint8_t device_number;
     uint8_t function_number;
 
+    uint16_t vendor_id;
+    uint16_t device_id;
+
+    uint8_t revision_id;
+    uint8_t prog_if;
+
+    uint8_t class_code;
+    uint8_t subclass;
+
+    uint8_t cache_line_size;
+    uint8_t latency_timer;
+
+    uint8_t header_type;
+
 } pci_dev_t;
+
+/* Header types */
+
+enum Pci_header_types
+{
+    GENERAL_DEVICE    = 0x0,
+    PCI_TO_PCI_BRIDGE = 0x1,
+    CARDBUS_BRIDGE    = 0x2,
+};
 
 /* Common header fields layout */
 
@@ -159,41 +182,58 @@ typedef struct PCI_dev
 
 /* Class codes*/
 
-#define PCI_CLASS_UNCLASSIFIED            0x0
-#define PCI_CLASS_MASS_STORAGE_CONTROLLER 0x1
-#define PCI_CLASS_NETWORK_CONTROLLER      0x2
-#define PCI_CLASS_DISPLAY_CONTROLLER      0x3
-#define PCI_CLASS_MULTIMEDIA_CONTROLLER   0x4
-#define PCI_CLASS_MEMORY_CONTROLLER       0x5
-#define PCI_CLASS_BRIDGE                  0x6
-#define PCI_CLASS_SIMPLE_COMMUNICATION    0x7
-#define PCI_CLASS_BASE_SYS_PERIPHERAL     0x8
-#define PCI_CLASS_IMPUT_DEVICE_CONTOLLER  0x9
-#define PCI_CLASS_DOCKING_STATION         0xA
-#define PCI_CLASS_PROCESSOR               0xB
-#define PCI_CLASS_SERIAL_BUS_CONTROLLER   0xC
-#define PCI_CLASS_WIRELESS_CONTROLLER     0xD
-#define PCI_CLASS_INTELLIGENT_CONTROLLER  0xE
-#define PCI_CLASS_SATELLITE_COMMUNICATION 0xF
-#define PCI_CLASS_ENCRYPTION_CONTROLLER   0x10
-#define PCI_CLASS_SIGNAL_PROCESSING       0x11
-#define PCI_CLASS_PROCESSING_ACCELERATOR  0x12
-#define PCI_CLASS_NON_ESSENTIAL_INSRT     0x13
-#define PCI_CLASS_CO_PROCESSOR            0x40 
-#define PCI_CLASS_UNASSIGNED_CLASS        0xFF
+enum Pci_class
+{
+    PCI_CLASS_UNCLASSIFIED            = 0x0,
+    PCI_CLASS_MASS_STORAGE_CONTROLLER = 0x1,
+    PCI_CLASS_NETWORK_CONTROLLER      = 0x2,
+    PCI_CLASS_DISPLAY_CONTROLLER      = 0x3,
+    PCI_CLASS_MULTIMEDIA_CONTROLLER   = 0x4,
+    PCI_CLASS_MEMORY_CONTROLLER       = 0x5,
+    PCI_CLASS_BRIDGE                  = 0x6,
+    PCI_CLASS_SIMPLE_COMMUNICATION    = 0x7,
+    PCI_CLASS_BASE_SYS_PERIPHERAL     = 0x8,
+    PCI_CLASS_IMPUT_DEVICE_CONTOLLER  = 0x9,
+    PCI_CLASS_DOCKING_STATION         = 0xA,
+    PCI_CLASS_PROCESSOR               = 0xB,
+    PCI_CLASS_SERIAL_BUS_CONTROLLER   = 0xC,
+    PCI_CLASS_WIRELESS_CONTROLLER     = 0xD,
+    PCI_CLASS_INTELLIGENT_CONTROLLER  = 0xE,
+    PCI_CLASS_SATELLITE_COMMUNICATION = 0xF,
+    PCI_CLASS_ENCRYPTION_CONTROLLER   = 0x10,
+    PCI_CLASS_SIGNAL_PROCESSING       = 0x11,
+    PCI_CLASS_PROCESSING_ACCELERATOR  = 0x12,
+    PCI_CLASS_NON_ESSENTIAL_INSRT     = 0x13,
+    PCI_CLASS_CO_PROCESSOR            = 0x40,
+    PCI_CLASS_UNASSIGNED_CLASS        = 0xFF,
+};
 
 /* Network controller subclasses */
 
-#define PCI_SUBCLASS_ETHERNET   0x0
-#define PCI_SUBCLASS_TOKEN_RING 0x1
-#define PCI_SUBCLASS_FDDI       0x2
-#define PCI_SUBCLASS_ATM        0x3
-#define PCI_SUBCLASS_ISDN       0x4
-#define PCI_SUBCLASS_WORLDFLIP  0x5
-#define PCI_SUBCLASS_PICMG_2_14 0x6
-#define PCI_SUBCLASS_INFINIBAND 0x7
-#define PCI_SUBCLASS_FABRIC     0x8
-#define PCI_SUBCLASS_OTHER      0x80
+enum Pci_network_subclass
+{
+    PCI_SUBCLASS_ETHERNET   = 0x0,
+    PCI_SUBCLASS_TOKEN_RING = 0x1,
+    PCI_SUBCLASS_FDDI       = 0x2,
+    PCI_SUBCLASS_ATM        = 0x3,
+    PCI_SUBCLASS_ISDN       = 0x4,
+    PCI_SUBCLASS_WORLDFLIP  = 0x5,
+    PCI_SUBCLASS_PICMG_2_14 = 0x6,
+    PCI_SUBCLASS_INFINIBAND = 0x7,
+    PCI_SUBCLASS_FABRIC     = 0x8,
+    PCI_SUBCLASS_OTHER      = 0x80,
+};
+
+/* PCI device opeartions */
+
+uint16_t pci_dev_get_stat_reg(const pci_dev_t* pci_dev);
+uint16_t pci_dev_get_cmnd_reg(const pci_dev_t* pci_dev);
+
+// returns -1 on error (device not found) 
+int pci_dev_find(pci_dev_t* pci_dev, uint16_t class, uint16_t subclass, uint16_t vendor_id);
+
+// return -1 if device is not present
+int pci_dev_read_header(pci_dev_t* pci_dev);
 
 /* Enumerating PCI buses */
 
@@ -201,6 +241,8 @@ bool check_pci_device(uint8_t bus, uint8_t device, uint8_t function);
 int  enumerate_pci_devices(void);
 
 uint16_t get_vendor_id(uint8_t bus, uint8_t dev, uint8_t function);
+uint8_t  get_class    (uint8_t bus, uint8_t dev, uint8_t function);
+uint8_t  get_subclass (uint8_t bus, uint8_t dev, uint8_t function);
 
 uint8_t  get_header_type     (uint8_t bus, uint8_t dev);
 bool     check_multi_function(uint8_t bus, uint8_t dev);

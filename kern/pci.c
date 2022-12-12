@@ -22,6 +22,108 @@ void init_pci(void)
     return; 
 }
 
+/* PCI device opeartions */
+
+uint16_t pci_dev_get_stat_reg(const pci_dev_t* pci_dev)
+{
+    assert(pci_dev);
+    return pci_config_read16(pci_dev, PCI_CONF_SPACE_STATUS);
+}
+
+uint16_t pci_dev_get_cmnd_reg(const pci_dev_t* pci_dev)
+{
+    assert(pci_dev);
+    return pci_config_read16(pci_dev, PCI_CONF_SPACE_COMMAND);
+}
+
+int pci_dev_find(pci_dev_t* pci_dev, uint16_t class, uint16_t subclass, uint16_t vendor_id)
+{
+    assert(pci_dev);
+
+    uint16_t bus      = 0;
+    uint8_t  dev      = 0;
+    uint8_t  function = 0;
+
+    bool found = false;
+
+    for (bus = 0; bus < MAX_BUS; bus++)
+    {
+        for (dev = 0; dev < MAX_DEV; dev++)
+        {
+            function= 0;
+
+            if (check_pci_device(bus, dev, function) == false)
+                continue;
+
+            cprintf("class 0x%x subclass 0x%x \n", get_class   (bus, dev, function), 
+                                                   get_subclass(bus, dev, function));
+
+            if (class     == get_class    (bus, dev, function)
+             && subclass  == get_subclass (bus, dev, function)
+             && vendor_id == get_vendor_id(bus, dev, function))
+            {
+                found = true;
+                goto found;
+            }
+
+            bool is_mf = check_multi_function(bus, dev);
+            if (is_mf)
+            {
+                for (function = 1; function < MAX_FUN; function++)
+                {
+                    if (check_pci_device(bus, dev, function) == false)
+                        continue;
+
+                    cprintf("class 0x%x subclass 0x%x \n", get_class   (bus, dev, function), 
+                                                           get_subclass(bus, dev, function));
+
+                    if (class     == get_class    (bus, dev, function)
+                     && subclass  == get_subclass (bus, dev, function)
+                     && vendor_id == get_vendor_id(bus, dev, function))
+                    {
+                        found = true;
+                        goto found;
+                    }
+                }
+            }
+        }
+    }
+
+found:
+
+    if (found == false)
+        return -1;
+
+    pci_dev->bus_number      = (uint8_t) bus;
+    pci_dev->device_number   = dev;
+    pci_dev->function_number = function;
+
+    pci_dev->class_code = class;
+    pci_dev->subclass   = subclass;
+    pci_dev->vendor_id  = vendor_id;
+
+    return 0;
+}
+
+int pci_dev_read_header(pci_dev_t* pci_dev)
+{
+    assert(pci_dev);
+
+    if (check_pci_device(pci_dev->bus_number, pci_dev->device_number, pci_dev->function_number) == false)
+        return -1;
+
+    pci_dev->device_id   = pci_config_read16(pci_dev, PCI_CONF_SPACE_DEVICE_ID);
+
+    pci_dev->revision_id = pci_config_read16(pci_dev, PCI_CONF_SPACE_REVISION_ID);
+    pci_dev->prog_if     = pci_config_read16(pci_dev, PCI_CONF_SPACE_PROG_IF);
+
+    pci_dev->cache_line_size = pci_config_read16(pci_dev, PCI_CONF_SPACE_CACHE_LINE_SIZE);
+    pci_dev->latency_timer   = pci_config_read16(pci_dev, PCI_CONF_SPACE_LATENCY_TIMER);
+    pci_dev->header_type     = pci_config_read16(pci_dev, PCI_CONF_SPACE_HEADER_TYPE);
+
+    return 0;
+}
+
 /* Enumerating PCI buses */
 
 uint8_t get_header_type (uint8_t bus, uint8_t dev)
@@ -51,6 +153,28 @@ uint16_t get_vendor_id(uint8_t bus, uint8_t dev, uint8_t function)
     return pci_config_read16(&device, PCI_CONF_SPACE_VENDOR_ID);
 }
 
+uint8_t get_class(uint8_t bus, uint8_t dev, uint8_t function)
+{
+    pci_dev_t device = { 0 };
+
+    device.bus_number      = bus;
+    device.device_number   = dev;
+    device.function_number = function;
+
+    return pci_config_read8(&device, PCI_CONF_SPACE_CLASS);
+}
+
+uint8_t get_subclass(uint8_t bus, uint8_t dev, uint8_t function)
+{
+    pci_dev_t device = { 0 };
+
+    device.bus_number      = bus;
+    device.device_number   = dev;
+    device.function_number = function;
+
+    return pci_config_read8(&device, PCI_CONF_SPACE_SUBCLASS);
+}
+
 bool check_pci_device(uint8_t bus, uint8_t device, uint8_t function)
 {
     uint16_t vendor_id = get_vendor_id(bus, device, function);
@@ -76,7 +200,7 @@ int enumerate_pci_devices(void)
     {
         for (uint8_t dev = 0; dev < MAX_DEV; dev++)
         {
-            uint8_t function= 0;
+            uint8_t function = 0;
 
             if (check_pci_device(bus, dev, function) == false)
                 continue;
@@ -128,8 +252,13 @@ uint32_t pci_config_read32(const pci_dev_t* pci_dev, uint8_t offset)
                   | ((uint32_t) pci_dev->function_number) << PCI_CONF_ADDR_PORT_FUN_OFFS
                   | (offset & PCI_REGISTER_OFFS_MASK);
 
+    uint32_t prev = inl(PCI_CONFIGURATION_ADDR_PORT);
     outl(PCI_CONFIGURATION_ADDR_PORT, addr);
-    return inl(PCI_CONFIGURATION_DATA_PORT);
+
+    uint32_t val = inl(PCI_CONFIGURATION_DATA_PORT);
+
+    outl(PCI_CONFIGURATION_ADDR_PORT, prev);
+    return val;
 }
 
 void pci_config_write8(const pci_dev_t* pci_dev, uint8_t offset, uint8_t val)
@@ -162,8 +291,11 @@ void pci_config_write32(const pci_dev_t* pci_dev, uint8_t offset, uint32_t val)
                   | ((uint32_t) pci_dev->function_number) << PCI_CONF_ADDR_PORT_FUN_OFFS
                   | (offset & PCI_REGISTER_OFFS_MASK);
 
+    uint32_t prev = inl(PCI_CONFIGURATION_ADDR_PORT);
     outl(PCI_CONFIGURATION_ADDR_PORT, addr);
+
     outl(PCI_CONFIGURATION_DATA_PORT, val);
+    outl(PCI_CONFIGURATION_ADDR_PORT, prev);
 
     return;
 }

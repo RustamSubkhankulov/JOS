@@ -11,7 +11,8 @@ void init_pci(void)
     if (trace_pci)
         cprintf("PCI initialization started. \n");
 
-    // rountine 
+    if (trace_pci)
+        cprintf("Enumerating PCI devices. \n");
 
     if (trace_pci)
         cprintf("PCI initialization successfully finished. \n");
@@ -21,14 +22,85 @@ void init_pci(void)
 
 /* Enumerating PCI buses */
 
-bool check_pci_device(uint8_t bus, uint8_t device, uint8_t function)
+uint8_t get_header_type (uint8_t bus, uint8_t dev)
 {
+    pci_dev_t device = { 0 };
 
+    device.bus_number      = bus;
+    device.device_number   = dev;
+    device.function_number = 0;
+
+    return pci_config_read8(&device, PCI_CONF_SPACE_HEADER_TYPE);
 }
 
-int enumerate_pci_devices(void)
+bool check_multi_function(uint8_t bus, uint8_t dev)
 {
+    return (get_header_type(bus, dev) & HEADER_TYPE_REG_MF);
+}
 
+uint16_t get_vendor_id(uint8_t bus, uint8_t dev, uint8_t function)
+{
+    pci_dev_t device = { 0 };
+
+    device.bus_number      = bus;
+    device.device_number   = dev;
+    device.function_number = function;
+
+    return pci_config_read16(&device, PCI_CONF_SPACE_VENDOR_ID);
+}
+
+bool check_pci_device(uint8_t bus, uint8_t device, uint8_t function)
+{
+    uint16_t vendor_id = get_vendor_id(bus, device, function);
+
+    if (trace_pci_more)
+    {
+        cprintf("Checking device: bus=0x%03x device=0x%02x function=0x%x. ", 
+                                                     bus, device, function);
+        cprintf("Vendor_id=0x%04x. \n", vendor_id);
+
+        cprintf("Device exists: %s. \n", (vendor_id != NON_EXISTING_VENDOR_ID)? "yes": "no");
+    }
+
+    return (vendor_id != NON_EXISTING_VENDOR_ID);
+}
+
+
+// performs Brute Force scan
+int enumerate_pci_devices(void) 
+{
+    bool present = 0;
+    int count = 0;
+
+    for (uint16_t bus = 0; bus < MAX_BUS; bus++)
+    {
+        for (uint8_t dev = 0; dev < MAX_DEV; dev++)
+        {
+            uint8_t function= 0;
+
+            if (check_pci_device(bus, dev, function) == false)
+                continue;
+
+            count++;
+
+            bool is_mf = check_multi_function(bus, dev);
+
+            if (trace_pci_more)
+                cprintf("Device(bus=0x%03x device=0x%02x function=0x%x) is MF: %s. \n", 
+                                             bus, dev, function, (is_mf)? "yes": "no");                
+
+            if (is_mf)
+            {
+                for (function = 1; function < MAX_FUN; function++)
+                {
+                    if (check_pci_device(bus, dev, function) == true)
+                        count++;
+                }
+            }
+        }
+    }
+
+    return count;
 }
 
 /* Read-write functions for PIC configuration space */

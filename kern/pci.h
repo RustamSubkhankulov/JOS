@@ -12,6 +12,8 @@
 #define MAX_DEV 32
 #define MAX_FUN 8
 
+#define NON_EXISTING_VENDOR_ID 0xFFFF
+
 #define PCI_CONFIGURATION_ADDR_PORT  0xCF8
 #define PCI_CONFIGURATION_DATA_PORT  0xCFC
 
@@ -32,7 +34,7 @@
 #define PCI_CONF_ADDR_PORT_DEV_OFFS   11         // offset
 #define PCI_CONF_ADDR_PORT_FUN_OFFS   8          // offset
 
-typedef struct
+typedef struct PCI_dev
 {
     uint8_t bus_number;
     uint8_t device_number;
@@ -197,6 +199,11 @@ typedef struct
 
 bool check_pci_device(uint8_t bus, uint8_t device, uint8_t function);
 int  enumerate_pci_devices(void);
+
+uint16_t get_vendor_id(uint8_t bus, uint8_t dev, uint8_t function);
+
+uint8_t  get_header_type     (uint8_t bus, uint8_t dev);
+bool     check_multi_function(uint8_t bus, uint8_t dev);
 
 /* Read-write functions for PIC configuration space */
 

@@ -54,6 +54,12 @@
 #define trace_pci 1
 #endif 
 
+#ifdef  trace_pci
+#ifndef trace_pci_more
+#define trace_pci_more 1
+#endif 
+#endif 
+
 #ifndef trace_net
 #define trace_net 1
 #endif 

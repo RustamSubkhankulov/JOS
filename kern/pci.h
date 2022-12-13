@@ -67,7 +67,7 @@ enum PCI_header_type
 
 typedef struct PCI_dev_general
 {
-    struct PCI_dev;
+    struct PCI_dev pci_dev;
 
     uint32_t BAR0;
     uint32_t BAR1;
@@ -89,6 +89,7 @@ typedef struct PCI_dev_general
     uint8_t interrupt_pin;
     uint8_t min_grant;
     uint8_t max_latency;
+    
 } pci_dev_general_t;
 
 /* Common header fields layout */

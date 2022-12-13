@@ -25,8 +25,20 @@ void init_pci(void)
 void dump_pci_dev(const pci_dev_t* pci_dev)
 {
     assert(pci_dev);
+    cprintf("PCI_dev dump: \n");
 
-    // TODO
+    cprintf("BUS: 0x%02x DEVICE: 0x%02x FUNCTION: 0x%02x \n", pci_dev->bus_number, 
+                                                              pci_dev->device_number,
+                                                              pci_dev->function_number);
+    cprintf("VENDORID 0x%04x DEVICEID 0x%04x \n",             pci_dev->vendor_id,
+                                                              pci_dev->device_id);
+    cprintf("REVISIONID 0x%02x PROGIF 0x%02x \n",             pci_dev->revision_id, 
+                                                              pci_dev->prog_if);
+    cprintf("CLASS 0x%02x SUBCLASS 0x%02x \n",                pci_dev->class_code, 
+                                                              pci_dev->subclass);
+    cprintf("CACHELINESIZE 0x%02x LATENCYTIMER 0x%02x \n",    pci_dev->cache_line_size, 
+                                                              pci_dev->latency_timer);
+    cprintf("HEADERTYPE 0x%02x \n",                           pci_dev->header_type);
 
     return;
 }
@@ -34,8 +46,31 @@ void dump_pci_dev(const pci_dev_t* pci_dev)
 void dump_pci_dev_general(const pci_dev_general_t* pci_dev_general)
 {
     assert(pci_dev_general);
+    cprintf("PCI_dev_general dump: \n");
 
-    // TODO
+    const pci_dev_t* pci_dev = (const pci_dev_t*) pci_dev_general;
+    dump_pci_dev(pci_dev);
+
+    cprintf("BAR0 0x%04x BAR1 0x%04x BAR2 0x%04x BAR3 0x%04x BAR4 0x%04x BAR5 0x%04x\n", 
+                                                                  pci_dev_general->BAR0,
+                                                                  pci_dev_general->BAR1,
+                                                                  pci_dev_general->BAR2,
+                                                                  pci_dev_general->BAR3,
+                                                                  pci_dev_general->BAR4,
+                                                                  pci_dev_general->BAR5);
+
+    cprintf("CARDBUS_CIS_PTR 0x%04x", pci_dev_general->cardbus_cis_ptr);
+
+    cprintf("SYBSYSTEMVENDORID 0x%02x SYSTEMID 0x%02x \n", pci_dev_general->subsystem_vendor_id,
+                                                           pci_dev_general->subsystem_id);
+
+    cprintf("EXPANSIONBASEROMADDR 0x%04x \n", pci_dev_general->expansion_rom_base_addr);
+    cprintf("CAPABILITIESPTR 0x%02x \n", pci_dev_general->capabilites_ptr);
+
+    cprintf("INTLINE 0x%02x INTPIN 0x%02x MIN_GRANT 0x%02x MAX_LAT 0x%02x \n", pci_dev_general->interrupt_line,
+                                                                               pci_dev_general->interrupt_pin,
+                                                                               pci_dev_general->min_grant,
+                                                                               pci_dev_general->max_latency);
 
     return;
 }

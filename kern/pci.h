@@ -58,12 +58,38 @@ typedef struct PCI_dev
 
 /* Header types */
 
-enum Pci_header_types
+enum PCI_header_type
 {
     GENERAL_DEVICE    = 0x0,
     PCI_TO_PCI_BRIDGE = 0x1,
     CARDBUS_BRIDGE    = 0x2,
 };
+
+typedef struct PCI_dev_general
+{
+    struct PCI_dev;
+
+    uint32_t BAR0;
+    uint32_t BAR1;
+    uint32_t BAR2;
+    uint32_t BAR3;
+    uint32_t BAR4;
+    uint32_t BAR5;
+
+    uint32_t cardbus_cis_ptr;
+
+    uint16_t subsystem_vendor_id;
+    uint16_t subsystem_id;
+
+    uint32_t expansion_rom_base_addr;
+    
+    uint8_t  capabilites_ptr;
+
+    uint8_t interrupt_line;
+    uint8_t interrupt_pin;
+    uint8_t min_grant;
+    uint8_t max_latency;
+} pci_dev_general_t;
 
 /* Common header fields layout */
 
@@ -91,7 +117,7 @@ enum Pci_header_types
 #define PCI_CONF_SPACE_TYPE_0_BAR5            0x24 // 4    9
 #define PCI_CONF_SPACE_TYPE_0_CARDBUS_CIS     0x28 // 4    A
 #define PCI_CONF_SPACE_TYPE_0_SUB_VENDOR_ID   0x2C // 2    B
-#define PCI_CONF_SPACE_TYPE_0_SUB_DEVICE_ID   0x2E // 2    B
+#define PCI_CONF_SPACE_TYPE_0_SUB_ID          0x2E // 2    B
 #define PCI_CONF_SPACE_TYPE_0_EXPANSION_ROM   0x30 // 4    C
 #define PCI_CONF_SPACE_TYPE_0_CAPABILITIES    0x34 // 1    D
 #define PCI_CONF_SPACE_TYPE_0_INTERRUPT_LINE  0x3C // 1    F
@@ -234,6 +260,10 @@ int pci_dev_find(pci_dev_t* pci_dev, uint16_t class, uint16_t subclass, uint16_t
 
 // return -1 if device is not present
 int pci_dev_read_header(pci_dev_t* pci_dev);
+int pci_dev_general_read_header(pci_dev_general_t* pci_dev_general);
+
+void dump_pci_dev(const pci_dev_t* pci_dev);
+void dump_pci_dev_general(const pci_dev_general_t* pci_dev_general);
 
 /* Enumerating PCI buses */
 

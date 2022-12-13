@@ -22,6 +22,24 @@ void init_pci(void)
     return; 
 }
 
+void dump_pci_dev(const pci_dev_t* pci_dev)
+{
+    assert(pci_dev);
+
+    // TODO
+
+    return;
+}
+
+void dump_pci_dev_general(const pci_dev_general_t* pci_dev_general)
+{
+    assert(pci_dev_general);
+
+    // TODO
+
+    return;
+}
+
 /* PCI device opeartions */
 
 uint16_t pci_dev_get_stat_reg(const pci_dev_t* pci_dev)
@@ -112,14 +130,46 @@ int pci_dev_read_header(pci_dev_t* pci_dev)
     if (check_pci_device(pci_dev->bus_number, pci_dev->device_number, pci_dev->function_number) == false)
         return -1;
 
-    pci_dev->device_id   = pci_config_read16(pci_dev, PCI_CONF_SPACE_DEVICE_ID);
+    pci_dev->device_id       = pci_config_read16(pci_dev, PCI_CONF_SPACE_DEVICE_ID);
 
-    pci_dev->revision_id = pci_config_read16(pci_dev, PCI_CONF_SPACE_REVISION_ID);
-    pci_dev->prog_if     = pci_config_read16(pci_dev, PCI_CONF_SPACE_PROG_IF);
+    pci_dev->revision_id     = pci_config_read16(pci_dev, PCI_CONF_SPACE_REVISION_ID);
+    pci_dev->prog_if         = pci_config_read16(pci_dev, PCI_CONF_SPACE_PROG_IF);
 
     pci_dev->cache_line_size = pci_config_read16(pci_dev, PCI_CONF_SPACE_CACHE_LINE_SIZE);
     pci_dev->latency_timer   = pci_config_read16(pci_dev, PCI_CONF_SPACE_LATENCY_TIMER);
     pci_dev->header_type     = pci_config_read16(pci_dev, PCI_CONF_SPACE_HEADER_TYPE);
+
+    return 0;
+}
+
+int pci_dev_general_read_header(pci_dev_general_t* pci_dev_general)
+{
+    assert(pci_dev_general);
+    pci_dev_t* pci_dev = (pci_dev_t*) pci_dev_general;
+
+    if (pci_dev_read_header(pci_dev) == -1)
+        return -1;
+    
+    pci_dev_general->BAR0 = pci_config_read32(pci_dev, PCI_CONF_SPACE_TYPE_0_BAR0); 
+    pci_dev_general->BAR1 = pci_config_read32(pci_dev, PCI_CONF_SPACE_TYPE_0_BAR1);
+    pci_dev_general->BAR2 = pci_config_read32(pci_dev, PCI_CONF_SPACE_TYPE_0_BAR2);
+    pci_dev_general->BAR3 = pci_config_read32(pci_dev, PCI_CONF_SPACE_TYPE_0_BAR3);
+    pci_dev_general->BAR4 = pci_config_read32(pci_dev, PCI_CONF_SPACE_TYPE_0_BAR4);
+    pci_dev_general->BAR5 = pci_config_read32(pci_dev, PCI_CONF_SPACE_TYPE_0_BAR5);
+
+    pci_dev_general->cardbus_cis_ptr = pci_config_read32(pci_dev, PCI_CONF_SPACE_TYPE_0_CARDBUS_CIS);
+    
+    pci_dev_general->subsystem_vendor_id = pci_config_read16(pci_dev, PCI_CONF_SPACE_TYPE_0_SUB_VENDOR_ID);
+    pci_dev_general->subsystem_id        = pci_config_read16(pci_dev, PCI_CONF_SPACE_TYPE_0_SUB_ID);
+
+    pci_dev_general->expansion_rom_base_addr = pci_config_read32(pci_dev, PCI_CONF_SPACE_TYPE_0_EXPANSION_ROM);
+
+    pci_dev_general->capabilites_ptr = pci_config_read8(pci_dev, PCI_CONF_SPACE_TYPE_0_CAPABILITIES); 
+
+    pci_dev_general->interrupt_line = pci_config_read8(pci_dev, PCI_CONF_SPACE_TYPE_0_INTERRUPT_LINE);
+    pci_dev_general->interrupt_pin  = pci_config_read8(pci_dev, PCI_CONF_SPACE_TYPE_0_INTERRUPT_PIN);
+    pci_dev_general->min_grant      = pci_config_read8(pci_dev, PCI_CONF_SPACE_TYPE_0_MIN_GNT);
+    pci_dev_general->max_latency    = pci_config_read8(pci_dev, PCI_CONF_SPACE_TYPE_0_MAX_LAT);
 
     return 0;
 }

@@ -67,7 +67,7 @@ enum PCI_header_type
 
 typedef struct PCI_dev_general
 {
-    struct PCI_dev pci_dev;
+    pci_dev_t pci_dev;
 
     uint32_t BAR0;
     uint32_t BAR1;
@@ -79,7 +79,7 @@ typedef struct PCI_dev_general
     uint32_t cardbus_cis_ptr;
 
     uint16_t subsystem_vendor_id;
-    uint16_t subsystem_id;
+    uint16_t subsystem_dev_id;
 
     uint32_t expansion_rom_base_addr;
     
@@ -89,7 +89,7 @@ typedef struct PCI_dev_general
     uint8_t interrupt_pin;
     uint8_t min_grant;
     uint8_t max_latency;
-    
+
 } pci_dev_general_t;
 
 /* Common header fields layout */
@@ -118,7 +118,7 @@ typedef struct PCI_dev_general
 #define PCI_CONF_SPACE_TYPE_0_BAR5            0x24 // 4    9
 #define PCI_CONF_SPACE_TYPE_0_CARDBUS_CIS     0x28 // 4    A
 #define PCI_CONF_SPACE_TYPE_0_SUB_VENDOR_ID   0x2C // 2    B
-#define PCI_CONF_SPACE_TYPE_0_SUB_ID          0x2E // 2    B
+#define PCI_CONF_SPACE_TYPE_0_SUB_DEVICE_ID   0x2E // 2    B
 #define PCI_CONF_SPACE_TYPE_0_EXPANSION_ROM   0x30 // 4    C
 #define PCI_CONF_SPACE_TYPE_0_CAPABILITIES    0x34 // 1    D
 #define PCI_CONF_SPACE_TYPE_0_INTERRUPT_LINE  0x3C // 1    F
@@ -254,7 +254,9 @@ enum Pci_network_subclass
 /* PCI device opeartions */
 
 uint16_t pci_dev_get_stat_reg(const pci_dev_t* pci_dev);
+
 uint16_t pci_dev_get_cmnd_reg(const pci_dev_t* pci_dev);
+void     pci_dev_set_cmnd_reg(const pci_dev_t* pci_dev, uint16_t val);
 
 // returns -1 on error (device not found) 
 int pci_dev_find(pci_dev_t* pci_dev, uint16_t class, uint16_t subclass, uint16_t vendor_id);

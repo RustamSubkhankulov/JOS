@@ -59,10 +59,10 @@ void dump_pci_dev_general(const pci_dev_general_t* pci_dev_general)
                                                                   pci_dev_general->BAR4,
                                                                   pci_dev_general->BAR5);
 
-    cprintf("CARDBUS_CIS_PTR 0x%04x", pci_dev_general->cardbus_cis_ptr);
+    cprintf("CARDBUS_CIS_PTR 0x%04x \n", pci_dev_general->cardbus_cis_ptr);
 
-    cprintf("SYBSYSTEMVENDORID 0x%02x SYSTEMID 0x%02x \n", pci_dev_general->subsystem_vendor_id,
-                                                           pci_dev_general->subsystem_id);
+    cprintf("SUBSYSTEMVENDORID 0x%02x SUBSYSTEDEVICEMID 0x%02x \n", pci_dev_general->subsystem_vendor_id,
+                                                                    pci_dev_general->subsystem_dev_id);
 
     cprintf("EXPANSIONBASEROMADDR 0x%04x \n", pci_dev_general->expansion_rom_base_addr);
     cprintf("CAPABILITIESPTR 0x%02x \n", pci_dev_general->capabilites_ptr);
@@ -81,6 +81,14 @@ uint16_t pci_dev_get_stat_reg(const pci_dev_t* pci_dev)
 {
     assert(pci_dev);
     return pci_config_read16(pci_dev, PCI_CONF_SPACE_STATUS);
+}
+
+void pci_dev_set_cmnd_reg(const pci_dev_t* pci_dev, uint16_t val)
+{
+    assert(pci_dev);
+
+    pci_config_write16(pci_dev, PCI_CONF_SPACE_COMMAND, val);
+    return;
 }
 
 uint16_t pci_dev_get_cmnd_reg(const pci_dev_t* pci_dev)
@@ -195,7 +203,7 @@ int pci_dev_general_read_header(pci_dev_general_t* pci_dev_general)
     pci_dev_general->cardbus_cis_ptr = pci_config_read32(pci_dev, PCI_CONF_SPACE_TYPE_0_CARDBUS_CIS);
     
     pci_dev_general->subsystem_vendor_id = pci_config_read16(pci_dev, PCI_CONF_SPACE_TYPE_0_SUB_VENDOR_ID);
-    pci_dev_general->subsystem_id        = pci_config_read16(pci_dev, PCI_CONF_SPACE_TYPE_0_SUB_ID);
+    pci_dev_general->subsystem_dev_id    = pci_config_read16(pci_dev, PCI_CONF_SPACE_TYPE_0_SUB_DEVICE_ID);
 
     pci_dev_general->expansion_rom_base_addr = pci_config_read32(pci_dev, PCI_CONF_SPACE_TYPE_0_EXPANSION_ROM);
 

@@ -146,6 +146,10 @@ i386_init(void) {
     /* Lab 6 memory management initialization functions */
     init_memory();
 
+    // Initialize PCI devices & net
+    init_pci();
+    init_net();
+
     pic_init();
     timers_init();
 
@@ -183,10 +187,6 @@ i386_init(void) {
     ENV_CREATE(user_hello, ENV_TYPE_USER);
 #endif /* TEST* */
 #endif
-
-    // Initialize PCI devices & net
-    init_pci();
-    init_net();
 
     // Break to monitor not to run envs
     assert(false);

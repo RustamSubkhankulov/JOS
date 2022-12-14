@@ -20,15 +20,29 @@ const static uint16_t Virtio_pci_vendor_id = 0x1AF4;
  * low 32-bit parts of the field independently. 
 */
 
-/* Virtio I/O registers            Offs  Size  Descr*/
-#define VIRTIO_PCI_DEVICE_FEATURES 0x0   // 4  pre-configured by device 
-#define VIRTIO_PCI_GUEST_FEATURES  0x4   // 4  used by guest VM to communicate the features supported by VM
-#define VIRTIO_PCI_QUEUE_ADDR      0x8   // 4  
-#define VIRTIO_PCI_QUEUE_SIZE      0xC   // 2  
-#define VIRTIO_PCI_QUEUE_SELECT    0xE   // 2  
-#define VIRTIO_PCI_QUEUE_NOTIFY    0x10  // 2  
-#define VIRTIO_PCI_DEVICE_STATUS   0x12  // 1  current state of driver 
-#define VIRTIO_PCI_ISR_STATUS      0x13  // 1  
+// write offsets in every structure TODO
+
+//      Field name                     Offs  Size
+#define VIRTIO_CMN_CFG_DEVICE_F_SELECT 0x0   // 4
+#define VIRTIO_CMN_CFG_DEVICE_F        0x4   // 4
+#define VIRTIO_CMN_CFG_DRIVER_F_SELECT 0x8   // 4
+#define VIRTIO_CMN_CFG_DRIVER_F        0xC   // 4
+#define VIRTIO_CMN_CFG_MSIX_CONFIG     0x10  // 2
+#define VIRTIO_CMN_CFG_NUM_QUEUES      0x12  // 2
+#define VIRTIO_CMN_CFG_DEV_STATUS      0x14  // 1
+#define VIRTIO_CMN_CFG_CONF_GEN        0x15  // 1
+
+#define VIRTIO_CMN_CFG_Q_SELECT        0x16  // 2
+#define VIRTIO_CMN_CFG_Q_SIZE          0x18  // 2
+#define VIRTIO_CMN_CFG_Q_MSIX_VECTOR   0x1A  // 2
+#define VIRTIO_CMN_CFG_Q_ENABLE        0x1C  // 2
+#define VIRTIO_CMN_CFG_Q_NOTIFY_OFF    0x1E  // 2
+#define VIRTIO_CMN_CFG_Q_DESC          0x20  // 8
+#define VIRTIO_CMN_CFG_Q_DRIVER        0x28  // 8
+#define VIRTIO_CMN_CFG_Q_DEVICE        0x30  // 8
+
+#define VIRTIO_ISR_QUEUE_INT           0x1
+#define VIRTIO_ISR_DEVICE_CONF_INT     0x2
 
 /* The device MUST allow reading of any device-specific configuration field 
  * before FEATURES_OK is set by the driver 
@@ -107,13 +121,119 @@ typedef struct Virtqueue
 
 } virtqueue_t;
 
-uint8_t  virtio_read8 (const pci_dev_general_t* virtio_nic_dev, uint32_t offs);
-uint16_t virtio_read16(const pci_dev_general_t* virtio_nic_dev, uint32_t offs);
-uint32_t virtio_read32(const pci_dev_general_t* virtio_nic_dev, uint32_t offs);
 
-void virtio_write8 (const pci_dev_general_t* virtio_nic_dev, uint32_t offs, uint8_t  value);
-void virtio_write16(const pci_dev_general_t* virtio_nic_dev, uint32_t offs, uint16_t value);
-void virtio_write32(const pci_dev_general_t* virtio_nic_dev, uint32_t offs, uint32_t value);
+
+typedef struct Virtio_pci_cap 
+{ 
+    uint8_t cap_vndr;    /* Generic PCI field: PCI_CAP_ID_VNDR */ 
+    uint8_t cap_next;    /* Generic PCI field: next ptr. */ 
+    uint8_t cap_len;     /* Generic PCI field: capability length */ 
+    uint8_t cfg_type;    /* Identifies the structure. */ 
+    uint8_t bar;         /* Where to find it. */ 
+    uint8_t padding[3];  /* Pad to full dword. */ 
+    uint32_t offset;    /* Offset within bar. */ 
+    uint32_t length;    /* Length of the structure, in bytes. */ 
+
+} virtio_pci_cap_t;
+
+//      Filed name            Offs Size
+#define VIRTIO_PCI_CAP_VNDR   0x0  // 1
+#define VIRTIO_PCI_CAP_NEXT   0x1  // 1
+#define VIRTIO_PCI_CAP_LEN    0x2  // 1
+#define VIRTIO_PCI_CAP_TYPE   0x3  // 1
+#define VIRTIO_PCI_CAP_BAR    0x4  // 1
+#define VIRTIO_PCI_CAP_PDNG   0x5  // 3
+#define VIRTIO_PCI_CAP_OFFS   0x8  // 4
+#define VIRTIO_PCI_CAP_LENGTH 0x12 // 4
+
+/* Common configuration */ 
+#define VIRTIO_PCI_CAP_COMMON_CFG        1 
+/* Notifications */ 
+#define VIRTIO_PCI_CAP_NOTIFY_CFG        2 
+/* ISR Status */ 
+#define VIRTIO_PCI_CAP_ISR_CFG           3 
+/* Device specific configuration */ 
+#define VIRTIO_PCI_CAP_DEVICE_CFG        4 
+/* PCI configuration access */ 
+#define VIRTIO_PCI_CAP_PCI_CFG           5
+
+#define VIRTIO_PCI_CAP_MAX 5
+#define VIRTIO_PCI_CAP_MIN 1
+
+typedef struct Virtio_pci_common_cfg 
+{ 
+    /* About the whole device. */ 
+    uint32_t device_feature_select;     /* read-write */ 
+    uint32_t device_feature;            /* read-only for driver */ 
+    uint32_t driver_feature_select;     /* read-write */ 
+    uint32_t driver_feature;            /* read-write */ 
+    uint16_t msix_config;               /* read-write */ 
+    uint16_t num_queues;                /* read-only for driver */ 
+    uint8_t device_status;               /* read-write */ 
+    uint8_t config_generation;           /* read-only for driver */ 
+
+    /* About a specific virtqueue. */ 
+    uint16_t queue_select;              /* read-write */ 
+    uint16_t queue_size;                /* read-write */ 
+    uint16_t queue_msix_vector;         /* read-write */ 
+    uint16_t queue_enable;              /* read-write */ 
+    uint16_t queue_notify_off;          /* read-only for driver */ 
+    uint64_t queue_desc;                /* read-write */ 
+    uint64_t queue_driver;              /* read-write */ 
+    uint64_t queue_device;              /* read-write */ 
+
+} virtio_pci_common_cfg_t;
+
+typedef struct Virtio_pci_notify_cap 
+{ 
+    virtio_pci_cap_t cap; 
+    uint32_t notify_off_multiplier; /* Multiplier for queue_notify_off. */ 
+
+} virtio_pci_notify_cap_t;
+
+typedef struct Virtio_pci_isr_cfg
+{
+    unsigned queue_int: 1;
+    unsigned device_conf_int: 1;
+    unsigned reserved: 30;
+
+} virtio_pci_isr_cfg_t;
+
+typedef struct Virtio_pci_cfg_cap 
+{ 
+    virtio_pci_cap_t cap; 
+    uint8_t pci_cfg_data[4]; /* Data for BAR access. */ 
+
+} virtio_pci_cfg_cap_t;
+
+
+
+typedef struct Virtio_nic_dev
+{
+    pci_dev_general_t pci_dev_general;
+
+    uint64_t rcv_queue_addr;
+    uint64_t snd_queue_addr;
+    uint64_t ctrl_queue_addr; // if supported
+
+    uint32_t features; // features supported by both device & driver
+
+    virtio_pci_cap_t capabilities[5];
+    bool pci_conf_acc_io; // true - PCI configuration access capability is accessed through IO space
+ 
+} virtio_nic_dev_t;
+
+
+
+void read_virtio_pci_cap(pci_dev_t* pci_dev, virtio_pci_cap_t* virtio_pci_cap, uint8_t offs);
+
+uint8_t  virtio_read8 (const virtio_nic_dev_t* virtio_nic_dev, uint8_t type, uint32_t offs);
+uint16_t virtio_read16(const virtio_nic_dev_t* virtio_nic_dev, uint8_t type, uint32_t offs);
+uint32_t virtio_read32(const virtio_nic_dev_t* virtio_nic_dev, uint8_t type, uint32_t offs);
+
+void virtio_write8 (const virtio_nic_dev_t* virtio_nic_dev, uint8_t type, uint32_t offs, uint8_t  value);
+void virtio_write16(const virtio_nic_dev_t* virtio_nic_dev, uint8_t type, uint32_t offs, uint16_t value);
+void virtio_write32(const virtio_nic_dev_t* virtio_nic_dev, uint8_t type, uint32_t offs, uint32_t value);
 
 void virtio_set_dev_status_flag  (const pci_dev_general_t* virtio_nic_dev, uint8_t flag);
 bool virtio_check_dev_status_flag(const pci_dev_general_t* virtio_nic_dev, uint8_t flag);

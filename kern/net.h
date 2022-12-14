@@ -15,19 +15,6 @@ const static enum Pci_network_subclass Virtio_nic_pci_subclass = PCI_SUBCLASS_ET
 const static uint16_t Virtio_nic_pci_device_id = 0x1000; // network card
 const static uint16_t Virtio_nic_device_id     = 0x01;   // network card
 
-typedef struct Virtio_nic_dev
-{
-    pci_dev_general_t pci_dev_general;
-
-    uint64_t rcv_queue_addr;
-    uint64_t snd_queue_addr;
-
-    uint32_t features; // features supported by both device & driver
-
-    uint64_t ctrl_queue_addr; // if supported
-
-} virtio_nic_dev_t;
-
 struct Virtio_nic_packet_header
 {
     uint8_t flags;                 // Bit 0: Needs checksum; Bit 1: Received packet has valid data;
@@ -43,14 +30,14 @@ struct Virtio_nic_packet_header
     uint16_t buffer_count;         // Used when merging buffers.
 };
 
-/* Network Device Registers   Offs  Size*/
-#define VIRTIO_PCI_NET_MAC1   0x14  // 1
-#define VIRTIO_PCI_NET_MAC2   0x15  // 1
-#define VIRTIO_PCI_NET_MAC3   0x16  // 1
-#define VIRTIO_PCI_NET_MAC4   0x17  // 1
-#define VIRTIO_PCI_NET_MAC5   0x18  // 1
-#define VIRTIO_PCI_NET_MAC6   0x19  // 1
-#define VIRTIO_PCI_NET_STATUS 0x1A  // 1
+// /* Network Device Registers   Offs  Size*/
+// #define VIRTIO_PCI_NET_MAC1   0x14  // 1
+// #define VIRTIO_PCI_NET_MAC2   0x15  // 1
+// #define VIRTIO_PCI_NET_MAC3   0x16  // 1
+// #define VIRTIO_PCI_NET_MAC4   0x17  // 1
+// #define VIRTIO_PCI_NET_MAC5   0x18  // 1
+// #define VIRTIO_PCI_NET_MAC6   0x19  // 1
+// #define VIRTIO_PCI_NET_STATUS 0x1A  // 1
 
 /* Network Card Feature Bits */
 #define VIRTIO_NET_F_CSUM                0

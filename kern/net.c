@@ -9,6 +9,8 @@
 
 static int virtio_nic_dev_init        (virtio_nic_dev_t* virtio_nic_dev);
 static int virtio_nic_dev_reset       (virtio_nic_dev_t* virtio_nic_dev);
+
+static int virtio_nic_scan_conf        (virtio_nic_dev_t* virtio_nic_dev);
 static int virtio_nic_dev_neg_features(virtio_nic_dev_t* virtio_nic_dev);
 
 static int virtio_nic_setup           (virtio_nic_dev_t* virtio_nic_dev);
@@ -64,6 +66,9 @@ static int virtio_nic_dev_init(virtio_nic_dev_t* virtio_nic_dev)
     virtio_set_dev_status_flag((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_STATUS_ACKNOWLEDGE);
     virtio_set_dev_status_flag((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_STATUS_DRIVER);
 
+    err = virtio_nic_scan_conf(virtio_nic_dev);
+    if (err != 0) return err;
+
     err = virtio_nic_dev_neg_features(virtio_nic_dev);
     if (err != 0) return err;
 
@@ -78,13 +83,13 @@ static int virtio_nic_dev_reset(virtio_nic_dev_t* virtio_nic_dev)
 {
     assert(virtio_nic_dev);
 
-    virtio_write8((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_DEVICE_STATUS, 0x0);
+    // virtio_write8((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_DEVICE_STATUS, 0x0); TODO
 
     uint8_t device_status = 0;
 
     do
     {
-        device_status = virtio_read8((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_DEVICE_STATUS);
+        // device_status = virtio_read8((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_DEVICE_STATUS); TODO
 
     } while (device_status != 0);
 
@@ -107,6 +112,54 @@ static int virtio_nic_check_and_reset(virtio_nic_dev_t* virtio_nic_dev)
     if (err != 0) return err;
 
     return 1; // reset happened
+}
+
+static int virtio_nic_scan_conf(virtio_nic_dev_t* virtio_nic_dev)
+{
+    assert(virtio_nic_dev);
+
+    uint16_t status = pci_dev_get_stat_reg((const pci_dev_t*) virtio_nic_dev);
+    
+    if (!(status & PCI_CONF_SPACE_TYPE_0_CAPABILITIES))
+    {
+        cprintf("Capabilities list isn't supported by device. \n");
+        virtio_set_dev_status_flag((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_STATUS_FAILED);
+        return -1;
+    }
+
+    uint8_t cap_offs = virtio_nic_dev->pci_dev_general.capabilites_ptr;
+
+    do
+    {
+        uint8_t cfg_type = pci_config_read8((pci_dev_t*) virtio_nic_dev, cap_offs + VIRTIO_PCI_CAP_TYPE);
+
+        if (cfg_type > VIRTIO_PCI_CAP_MAX || cfg_type < VIRTIO_PCI_CAP_MIN)
+        {
+            cap_offs = pci_config_read8((pci_dev_t*) virtio_nic_dev, cap_offs + VIRTIO_PCI_CAP_NEXT);
+            continue;
+        }
+
+        read_virtio_pci_cap((pci_dev_t*) virtio_nic_dev, virtio_nic_dev->capabilities + cfg_type - 1, cap_offs);
+
+        if (trace_net)
+            cprintf("Type 0x%x Next 0x%x Bar 0x%x Offset 0x%x \n", (virtio_nic_dev->capabilities + cfg_type - 1)->cfg_type,
+                                                                   (virtio_nic_dev->capabilities + cfg_type - 1)->cap_next,
+                                                                   (virtio_nic_dev->capabilities + cfg_type - 1)->bar,
+                                                                   (virtio_nic_dev->capabilities + cfg_type - 1)->offset);
+
+        if (cfg_type == VIRTIO_PCI_CAP_PCI_CFG)
+        {
+            uint8_t barn = (virtio_nic_dev->capabilities + cfg_type - 1)->bar;
+            virtio_nic_dev->pci_conf_acc_io = ((virtio_nic_dev->pci_dev_general.BAR[barn]) & IOS_BAR_ALWAYS1);
+        }
+
+        cap_offs = (virtio_nic_dev->capabilities[cfg_type - 1]).cap_next;
+
+    } while (cap_offs != 0); // end of list 
+
+    assert(virtio_nic_dev->capabilities[VIRTIO_PCI_CAP_PCI_CFG - 1].cap_vndr == 0x9); // found capatibility // TODO send device flag on error
+
+    return 0;
 }
 
 static int virtio_nic_dev_neg_features(virtio_nic_dev_t* virtio_nic_dev)
@@ -146,11 +199,22 @@ static int virtio_nic_dev_neg_features(virtio_nic_dev_t* virtio_nic_dev)
 static int virtio_nic_setup_virtqueues(virtio_nic_dev_t* virtio_nic_dev)
 {
     assert(virtio_nic_dev); // TODO
+
+    uint8_t numq = virtio_read8(virtio_nic_dev, VIRTIO_PCI_CAP_COMMON_CFG, VIRTIO_CMN_CFG_NUM_QUEUES);
+    cprintf("numq is 0x%x \n", numq);
+
+
     return 0;
 }
 
 static int virtio_nic_setup(virtio_nic_dev_t* virtio_nic_dev)
 {
     assert(virtio_nic_dev); // TODO
+
+    int err = 0;
+
+    err = virtio_nic_setup_virtqueues(virtio_nic_dev);
+    if (err != 0) return err;
+
     return 0;
 }

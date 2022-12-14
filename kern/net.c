@@ -117,40 +117,7 @@ static int virtio_nic_dev_neg_features(virtio_nic_dev_t* virtio_nic_dev)
 
     // TODO
 
-    cprintf("BAR0 0x%x \n", virtio_nic_dev->pci_dev_general.BAR0);
-
-    // uint32_t device_f = virtio_read32((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_DEVICE_FEATURES);
-
-    // // uint32_t expected_f   = 0;
-    // // uint32_t negotiated_f = device_f & expected_f;
-
-    // virtio_write32((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_GUEST_FEATURES, 0xDEADBABA);
-    
-    // //
-    // uint32_t guest_f = virtio_read32((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_GUEST_FEATURES);    
-    // cprintf("Guest features: 0x%x Device: 0x%x \n", guest_f, device_f);
-    // //
-
-    // virtio_set_dev_status_flag((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_STATUS_FEATURES_OK);
-
-    // bool features_supported = virtio_check_dev_status_flag((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_STATUS_FEATURES_OK);
-    // if (features_supported == false)
-    // {
-    //     if (trace_net)
-    //         cprintf("Device does not support our subset of features and the device is unusable. \n");
-
-    //     return -1;
-    // }
-
-    virtio_write16((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_QUEUE_SELECT, 0);
-    uint16_t size = virtio_read16((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_QUEUE_SIZE);
-
-    cprintf("first queue size is 0x%x \n", size);
-
-    virtio_write16((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_QUEUE_SELECT, 1);
-    size = virtio_read16((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_QUEUE_SIZE);
-
-    cprintf("second queue size is 0x%x \n", size);
+    virtio_write8((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_QUEUE_SELECT, 3);
 
     return 0;
 }

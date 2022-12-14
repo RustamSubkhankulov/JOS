@@ -34,6 +34,8 @@ void init_net(void)
     if (err == -1)
         panic("Virtio NIC incorrect bus, dev & func parameters. \n");
 
+    // virtio_nic_dev.pci_dev_general.BAR0 = 0xC01F;
+
     if (trace_net)
         dump_pci_dev_general((pci_dev_general_t*) (&virtio_nic_dev));
 
@@ -115,14 +117,14 @@ static int virtio_nic_dev_neg_features(virtio_nic_dev_t* virtio_nic_dev)
 
     // TODO
 
-    // cprintf("BAR0 0x%x \n", virtio_nic_dev->pci_dev_general.BAR0);
+    cprintf("BAR0 0x%x \n", virtio_nic_dev->pci_dev_general.BAR0);
 
     // uint32_t device_f = virtio_read32((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_DEVICE_FEATURES);
 
     // // uint32_t expected_f   = 0;
     // // uint32_t negotiated_f = device_f & expected_f;
 
-    // virtio_write32((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_GUEST_FEATURES, 0xFFFFFFFF);
+    // virtio_write32((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_GUEST_FEATURES, 0xDEADBABA);
     
     // //
     // uint32_t guest_f = virtio_read32((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_GUEST_FEATURES);    
@@ -139,6 +141,16 @@ static int virtio_nic_dev_neg_features(virtio_nic_dev_t* virtio_nic_dev)
 
     //     return -1;
     // }
+
+    virtio_write16((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_QUEUE_SELECT, 0);
+    uint16_t size = virtio_read16((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_QUEUE_SIZE);
+
+    cprintf("first queue size is 0x%x \n", size);
+
+    virtio_write16((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_QUEUE_SELECT, 1);
+    size = virtio_read16((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_QUEUE_SIZE);
+
+    cprintf("second queue size is 0x%x \n", size);
 
     return 0;
 }

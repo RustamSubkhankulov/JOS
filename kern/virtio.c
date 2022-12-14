@@ -33,8 +33,8 @@ uint16_t virtio_read16(const pci_dev_general_t* virtio_nic_dev, uint32_t offs)
     do
     {
 
-        first = inl((virtio_nic_dev->BAR0 & IOS_BAR_BASE_ADDR) + offs);
-        secnd = inl((virtio_nic_dev->BAR0 & IOS_BAR_BASE_ADDR) + offs);
+        first = inw((virtio_nic_dev->BAR0 & IOS_BAR_BASE_ADDR) + offs);
+        secnd = inw((virtio_nic_dev->BAR0 & IOS_BAR_BASE_ADDR) + offs);
 
     } while(first != secnd);
 
@@ -51,8 +51,8 @@ uint32_t virtio_read32(const pci_dev_general_t* virtio_nic_dev, uint32_t offs)
     do
     {
 
-        first = inw((virtio_nic_dev->BAR0 & IOS_BAR_BASE_ADDR) + offs);
-        secnd = inw((virtio_nic_dev->BAR0 & IOS_BAR_BASE_ADDR) + offs);
+        first = inl((virtio_nic_dev->BAR0 & IOS_BAR_BASE_ADDR) + offs);
+        secnd = inl((virtio_nic_dev->BAR0 & IOS_BAR_BASE_ADDR) + offs);
 
     } while(first != secnd);
 
@@ -71,7 +71,7 @@ void virtio_write16(const pci_dev_general_t* virtio_nic_dev, uint32_t offs, uint
 {
     assert(virtio_nic_dev); 
 
-    outl((virtio_nic_dev->BAR0 & IOS_BAR_BASE_ADDR) + offs, value);
+    outw((virtio_nic_dev->BAR0 & IOS_BAR_BASE_ADDR) + offs, value);
     return;
 }
 
@@ -79,7 +79,7 @@ void virtio_write32(const pci_dev_general_t* virtio_nic_dev, uint32_t offs, uint
 {
     assert(virtio_nic_dev); 
 
-    outw((virtio_nic_dev->BAR0 & IOS_BAR_BASE_ADDR) + offs, value);
+    outl((virtio_nic_dev->BAR0 & IOS_BAR_BASE_ADDR) + offs, value);
     return;
 }
 

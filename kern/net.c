@@ -5,12 +5,14 @@
 
 #include <kern/traceopt.h>
 #include <kern/net.h>
+#include <kern/pmap.h>
 
 static int virtio_nic_dev_init        (virtio_nic_dev_t* virtio_nic_dev);
 static int virtio_nic_dev_reset       (virtio_nic_dev_t* virtio_nic_dev);
 static int virtio_nic_dev_neg_features(virtio_nic_dev_t* virtio_nic_dev);
 
 static int virtio_nic_setup           (virtio_nic_dev_t* virtio_nic_dev);
+static int virtio_nic_setup_virtqueues(virtio_nic_dev_t* virtio_nic_dev);
 
 static int virtio_nic_check_and_reset (virtio_nic_dev_t* virtio_nic_dev);
 
@@ -35,8 +37,9 @@ void init_net(void)
     if (trace_net)
         dump_pci_dev_general((pci_dev_general_t*) (&virtio_nic_dev));
 
-    assert((virtio_nic_dev.pci_dev_general.pci_dev.device_id == Virtio_nic_pci_device_id)
-        || (virtio_nic_dev.pci_dev_general.pci_dev.device_id == Virtio_nic_device_id + PCI_DEVICE_ID_CALC_OFFSET));
+    assert(virtio_nic_dev.pci_dev_general.pci_dev.device_id   == Virtio_nic_pci_device_id && "Transitional device");
+    assert(virtio_nic_dev.pci_dev_general.pci_dev.revision_id == 0                        && "Transitional device");
+    assert(virtio_nic_dev.pci_dev_general.subsystem_dev_id    == Virtio_nic_device_id     && "Transitional device");
 
     err = virtio_nic_dev_reset(&virtio_nic_dev);
     if (err != 0) 
@@ -74,7 +77,17 @@ static int virtio_nic_dev_init(virtio_nic_dev_t* virtio_nic_dev)
 static int virtio_nic_dev_reset(virtio_nic_dev_t* virtio_nic_dev)
 {
     assert(virtio_nic_dev);
-    cprintf("Don't know yet how to  reset VirtIO device \n"); // TODO
+
+    virtio_write8((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_DEVICE_STATUS, 0x0);
+
+    uint8_t device_status = 0;
+
+    do
+    {
+        device_status = virtio_read8((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_DEVICE_STATUS);
+
+    } while (device_status != 0);
+
     return 0;
 }
 
@@ -100,19 +113,39 @@ static int virtio_nic_dev_neg_features(virtio_nic_dev_t* virtio_nic_dev)
 {
     assert(virtio_nic_dev);
 
-    // negotiate TODO
+    // TODO
 
-    virtio_set_dev_status_flag((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_STATUS_FEATURES_OK);
+    // cprintf("BAR0 0x%x \n", virtio_nic_dev->pci_dev_general.BAR0);
 
-    bool features_supported = virtio_check_dev_status_flag((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_STATUS_FEATURES_OK);
-    if (features_supported == false)
-    {
-        if (trace_net)
-            cprintf("Device does not support our subset of features and the device is unusable. \n");
+    // uint32_t device_f = virtio_read32((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_DEVICE_FEATURES);
 
-        return -1;
-    }
+    // // uint32_t expected_f   = 0;
+    // // uint32_t negotiated_f = device_f & expected_f;
 
+    // virtio_write32((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_GUEST_FEATURES, 0xFFFFFFFF);
+    
+    // //
+    // uint32_t guest_f = virtio_read32((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_GUEST_FEATURES);    
+    // cprintf("Guest features: 0x%x Device: 0x%x \n", guest_f, device_f);
+    // //
+
+    // virtio_set_dev_status_flag((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_STATUS_FEATURES_OK);
+
+    // bool features_supported = virtio_check_dev_status_flag((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_STATUS_FEATURES_OK);
+    // if (features_supported == false)
+    // {
+    //     if (trace_net)
+    //         cprintf("Device does not support our subset of features and the device is unusable. \n");
+
+    //     return -1;
+    // }
+
+    return 0;
+}
+
+static int virtio_nic_setup_virtqueues(virtio_nic_dev_t* virtio_nic_dev)
+{
+    assert(virtio_nic_dev); // TODO
     return 0;
 }
 

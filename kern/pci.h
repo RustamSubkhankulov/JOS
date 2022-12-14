@@ -126,31 +126,6 @@ typedef struct PCI_dev_general
 #define PCI_CONF_SPACE_TYPE_0_MIN_GNT         0x3E // 1    F
 #define PCI_CONF_SPACE_TYPE_0_MAX_LAT         0x3F // 1    F
 
-/* Header type 1 (PCI-to-PCI bridge) specific fields */
-
-#define PCI_CONF_SPACE_TYPE_1_BAR0            0x10 // 4    4
-#define PCI_CONF_SPACE_TYPE_1_BAR1            0x14 // 4    5
-#define PCI_CONF_SPACE_TYPE_1_PRIM_BUS_NUM    0x18 // 1    6
-#define PCI_CONF_SPACE_TYPE_1_SECN_BUS_NUM    0x19 // 1    6
-#define PCI_CONF_SPACE_TYPE_1_SUBR_BUS_NUM    0x1A // 1    6
-#define PCI_CONF_SPACE_TYPE_1_SECN_LAT_TIM    0x1B // 1    6
-#define PCI_CONF_SPACE_TYPE_1_IO_BASE         0x1C // 1    7
-#define PCI_CONF_SPACE_TYPE_1_IO_LIM          0x1D // 1    7
-#define PCI_CONF_SPACE_TYPE_1_SECN_STATUS     0x1E // 2    7
-#define PCI_CONF_SPACE_TYPE_1_MEM_BASE        0x20 // 2    8
-#define PCI_CONF_SPACE_TYPE_1_MEM_LIM         0x22 // 2    8
-#define PCI_CONF_SPACE_TYPE_1_PREF_MEM_BASE   0x24 // 2    9
-#define PCI_CONF_SPACE_TYPE_1_PREF_MEM_LIM    0x26 // 2    9
-#define PCI_CONF_SPACE_TYPE_1_PREF_BASE_U32   0x28 // 4    A
-#define PCI_CONF_SPACE_TYPE_1_PREF_LIM_U32    0x2C // 4    B
-#define PCI_CONF_SPACE_TYPE_1_IO_BASE_U16     0x30 // 2    C
-#define PCI_CONF_SPACE_TYPE_1_IO_LIM_U16      0x32 // 2    C
-#define PCI_CONF_SPACE_TYPE_1_CAPABILITIES    0x34 // 1    D
-#define PCI_CONF_SPACE_TYPE_1_EXPANSION_ROM   0x38 // 4    E
-#define PCI_CONF_SPACE_TYPE_1_INTERRUPT_LINE  0x3C // 1    F
-#define PCI_CONF_SPACE_TYPE_1_INTERRUPT_PIN   0x3D // 1    F
-#define PCI_CONF_SPACE_TYPE_1_BRIDGE_CTRL     0x3E // 2    F
-
 /* Header Type Register layout */
 
 #define HEADER_TYPE_REG_MF 0x80 // Multiple functions flag

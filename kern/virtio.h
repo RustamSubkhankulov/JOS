@@ -65,6 +65,7 @@ typedef struct Vring_avail
     uint16_t flags;
 	uint16_t idx;
 	uint16_t ring[];
+    /* uint16_t used_event; Only if VIRTIO_F_EVENT_IDX */ 
 
 } vring_avail_t;
 
@@ -74,6 +75,9 @@ typedef struct Vring_used_elem
 	uint32_t length; // Total length of the descriptor chain which was used (written to)
 
 } vring_used_elem_t;
+
+
+#define VIRTQ_USED_F_NO_NOTIFY  1 
 
 typedef struct Vring_used
 {
@@ -103,12 +107,18 @@ typedef struct Virtqueue
 
 } virtqueue_t;
 
-uint32_t virtio_get_reg          (const pci_dev_general_t* virtio_nic_dev, uint32_t offs);
+uint8_t  virtio_read8 (const pci_dev_general_t* virtio_nic_dev, uint32_t offs);
+uint16_t virtio_read16(const pci_dev_general_t* virtio_nic_dev, uint32_t offs);
+uint32_t virtio_read32(const pci_dev_general_t* virtio_nic_dev, uint32_t offs);
+
+void virtio_write8 (const pci_dev_general_t* virtio_nic_dev, uint32_t offs, uint8_t  value);
+void virtio_write16(const pci_dev_general_t* virtio_nic_dev, uint32_t offs, uint16_t value);
+void virtio_write32(const pci_dev_general_t* virtio_nic_dev, uint32_t offs, uint32_t value);
 
 void virtio_set_dev_status_flag  (const pci_dev_general_t* virtio_nic_dev, uint8_t flag);
 bool virtio_check_dev_status_flag(const pci_dev_general_t* virtio_nic_dev, uint8_t flag);
 
-bool virtio_check_dev_feature    (const pci_dev_general_t* virtio_nic_dev, uint8_t feature);
-void virtio_set_guest_feature    (      pci_dev_general_t* virtio_nic_dev, uint8_t feature);
+bool virtio_check_dev_feature(const pci_dev_general_t* virtio_nic_dev, uint8_t feature);
+void virtio_set_guest_feature(      pci_dev_general_t* virtio_nic_dev, uint8_t feature);
 
 #endif /* !JOS_KERN_VIRTIO_H */

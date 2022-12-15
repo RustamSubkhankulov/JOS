@@ -16,17 +16,23 @@ const static enum Pci_network_subclass Virtio_nic_pci_subclass = PCI_SUBCLASS_ET
 const static uint16_t Virtio_nic_pci_device_id = 0x1000; // network card
 const static uint16_t Virtio_nic_device_id     = 0x01;   // network card
 
-#define QUEUE_NUM 3
+/* Receive and send queues */
+#define QUEUE_NUM 2
+
+#define RCV_BUFFER_SIZE 2048
+
+#define MAC_ADDR_NUM 6
+
+#define RCVQ 0
+#define SNDQ 1
 
 typedef struct Virtio_nic_dev
 {
     pci_dev_general_t pci_dev_general;
-
-    virtqueue_t* rcvq;
-    virtqueue_t* sndq;
-    virtqueue_t* ctrlq;
-
+    virtqueue_t* queues;
     uint32_t features; // features supported by both device & driver
+
+    uint8_t MAC[MAC_ADDR_NUM];
 
 } virtio_nic_dev_t;
 

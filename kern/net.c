@@ -2,6 +2,7 @@
 #include <inc/error.h>
 #include <inc/uefi.h>
 #include <inc/x86.h>
+#include <inc/string.h>
 
 #include <kern/traceopt.h>
 #include <kern/net.h>
@@ -13,12 +14,12 @@ static int virtio_nic_dev_neg_features(virtio_nic_dev_t* virtio_nic_dev);
 
 static int virtio_nic_setup           (virtio_nic_dev_t* virtio_nic_dev);
 static int virtio_nic_setup_virtqueues(virtio_nic_dev_t* virtio_nic_dev);
+// static int virtio_fill_rcvq           (virtio_nic_dev_t* virtio_nic_dev)
+static void virtio_read_mac_addr      (virtio_nic_dev_t* virtio_nic_dev);
 
-static int virtio_nic_alloc_virtqueues(virtio_nic_dev_t* virtio_nic_dev, 
-                                                   virtqueue_t** queues);
+static int virtio_nic_alloc_virtqueues(virtio_nic_dev_t* virtio_nic_dev);
 
 static int virtio_nic_check_and_reset (virtio_nic_dev_t* virtio_nic_dev);
-
 void init_net(void)
 {
     if (trace_net)
@@ -37,14 +38,18 @@ void init_net(void)
     if (err == -1)
         panic("Virtio NIC incorrect bus, dev & func parameters. \n");
 
-    // virtio_nic_dev.pci_dev_general.BAR0 = 0xC01F;
-
     if (trace_net)
         dump_pci_dev_general((pci_dev_general_t*) (&virtio_nic_dev));
 
-    assert(virtio_nic_dev.pci_dev_general.pci_dev.device_id   == Virtio_nic_pci_device_id && "Transitional device");
-    assert(virtio_nic_dev.pci_dev_general.pci_dev.revision_id == 0                        && "Transitional device");
-    assert(virtio_nic_dev.pci_dev_general.subsystem_dev_id    == Virtio_nic_device_id     && "Transitional device");
+
+    /* Transitional device requirements */
+    if (virtio_nic_dev.pci_dev_general.pci_dev.device_id   != Virtio_nic_pci_device_id
+     || virtio_nic_dev.pci_dev_general.pci_dev.revision_id != 0
+     || virtio_nic_dev.pci_dev_general.subsystem_dev_id    != Virtio_nic_device_id)
+    {
+        cprintf("Error: Network card is not transitional device. \n");
+        return;
+    }
 
     err = virtio_nic_dev_reset(&virtio_nic_dev);
     if (err != 0) 
@@ -54,9 +59,7 @@ void init_net(void)
     if (err != 0)
         panic("Error occured during VirtIO NIC initialization. Pernel kanic. \n");
 
-    if (trace_net)
-        cprintf("Net initialization successfully finished. \n");
-
+    cprintf("Net initialization successfully finished. \n");
     return;
 }
 
@@ -120,10 +123,12 @@ static int virtio_nic_dev_neg_features(virtio_nic_dev_t* virtio_nic_dev)
 
     uint32_t supported_f = virtio_read32((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_DEVICE_FEATURES);
     
+    assert(supported_f & VIRTIO_F_RING_EVENT_IDX);
+
     if (trace_net)
         cprintf("Device features: 0x%x \n", supported_f);
 
-    uint32_t requested_f = VIRTIO_NET_F_CTRL_VQ; // (VIRTIO_F_VERSION_1 is not set - using Legacy Interface)
+    uint32_t requested_f = VIRTIO_NET_F_MAC; // (VIRTIO_F_VERSION_1 is not set - using Legacy Interface)
 
     if (trace_net)
         cprintf("Guest features (requested): 0x%x \n", requested_f);
@@ -140,22 +145,25 @@ static int virtio_nic_dev_neg_features(virtio_nic_dev_t* virtio_nic_dev)
     virtio_nic_dev->features = supported_f & requested_f;
 
     virtio_write32((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_GUEST_FEATURES, requested_f);
-    virtio_set_dev_status_flag((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_STATUS_FEATURES_OK);
+    
+    /* According to specification, these steps below must be omitted.
+       Although, I will leave it here in case we need them later for some reason .*/
 
-    bool features_ok = virtio_check_dev_status_flag((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_STATUS_FEATURES_OK);
-    if (!features_ok)
-    {
-        if (trace_net)
-            cprintf("Device does not support requested subset of features and thus it is unusuble. \n");
-        
-        virtio_set_dev_status_flag((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_STATUS_FAILED);
-        return -1;
-    }
+    // virtio_set_dev_status_flag((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_STATUS_FEATURES_OK);
+    // bool features_ok = virtio_check_dev_status_flag((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_STATUS_FEATURES_OK);
+    // if (!features_ok)
+    // {
+    //     if (trace_net)
+    //         cprintf("Device does not support requested subset of features and thus it is unusuble. \n");
+    //
+    //     virtio_set_dev_status_flag((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_STATUS_FAILED);
+    //     return -1;
+    // }
 
     return 0;
 }
 
-static int virtio_nic_alloc_virtqueues(virtio_nic_dev_t* virtio_nic_dev, virtqueue_t** queues)
+static int virtio_nic_alloc_virtqueues(virtio_nic_dev_t* virtio_nic_dev)
 {
     assert(virtio_nic_dev); 
 
@@ -173,11 +181,8 @@ static int virtio_nic_alloc_virtqueues(virtio_nic_dev_t* virtio_nic_dev, virtque
         return -1;
 
     void* memory = (void*) ((uint64_t) page2pa(allocated));
-
-    for (unsigned iter = 0; iter < QUEUE_NUM; iter++)
-    {
-        queues[iter] =  (virtqueue_t*) memory + iter;
-    }
+    memset(memory, 0, size);
+    virtio_nic_dev->queues = (virtqueue_t*) memory;
 
     return 0;
 }
@@ -187,9 +192,8 @@ static int virtio_nic_setup_virtqueues(virtio_nic_dev_t* virtio_nic_dev)
     assert(virtio_nic_dev); 
 
     pci_dev_general_t* pci_dev_general = (pci_dev_general_t*) virtio_nic_dev;
-    virtqueue_t* queues[QUEUE_NUM] = { 0 };
 
-    int err = virtio_nic_alloc_virtqueues(virtio_nic_dev, queues);
+    int err = virtio_nic_alloc_virtqueues(virtio_nic_dev);
     if (err != 0)
     {
         if (trace_net)
@@ -216,7 +220,7 @@ static int virtio_nic_setup_virtqueues(virtio_nic_dev_t* virtio_nic_dev)
             return -1;
         }
 
-        err = virtio_setup_virtqueue(queues[iter], size);
+        err = virtio_setup_virtqueue(virtio_nic_dev->queues + iter, size);
         if (err != 0)
         {
             if (trace_net)
@@ -227,19 +231,41 @@ static int virtio_nic_setup_virtqueues(virtio_nic_dev_t* virtio_nic_dev)
         }
 
         virtio_write16(pci_dev_general, VIRTIO_PCI_QUEUE_SELECT, iter);
-        virtio_write32(pci_dev_general, VIRTIO_PCI_QUEUE_ADDR, (uint64_t) queues[iter]->vring.desc / PAGE_SIZE);
+        virtio_write32(pci_dev_general, VIRTIO_PCI_QUEUE_ADDR, (uint64_t) (virtio_nic_dev->queues + iter)->vring.desc / PAGE_SIZE);
     
         if (trace_net)
             cprintf("Address of memory allocated for QUEUEN%d: 0x%lx IN PAGES: 0x%llx \n", iter,
-                                                            (uint64_t) queues[iter]->vring.desc, 
-                                                            (uint64_t) queues[iter]->vring.desc / PAGE_SIZE);
+                                                            (uint64_t) (virtio_nic_dev->queues + iter)->vring.desc, 
+                                                            (uint64_t) (virtio_nic_dev->queues + iter)->vring.desc / PAGE_SIZE);
     }
 
-    virtio_nic_dev->rcvq  = queues[0];
-    virtio_nic_dev->sndq  = queues[1];
-    virtio_nic_dev->ctrlq = queues[2];
-
     return 0;
+}
+
+// static int virtio_fill_rcvq(virtio_nic_dev_t* virtio_nic_dev)
+// {
+//     assert(virtio_nic_dev);
+//     return 0; // TODO
+// }
+
+static void virtio_read_mac_addr(virtio_nic_dev_t* virtio_nic_dev)
+{
+    assert(virtio_nic_dev);
+
+    for (unsigned iter = 0; iter < MAC_ADDR_NUM; iter++)
+    {
+        virtio_nic_dev->MAC[iter] = virtio_read8((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_NET_MAC1 + iter); 
+    }
+
+    if (trace_net)
+        cprintf("MAC address: %d.%d.%d.%d.%d.%d \n", virtio_nic_dev->MAC[0], 
+                                                     virtio_nic_dev->MAC[1],
+                                                     virtio_nic_dev->MAC[2],
+                                                     virtio_nic_dev->MAC[3],
+                                                     virtio_nic_dev->MAC[4],
+                                                     virtio_nic_dev->MAC[5]);
+
+    return;
 }
 
 static int virtio_nic_setup(virtio_nic_dev_t* virtio_nic_dev)
@@ -248,8 +274,13 @@ static int virtio_nic_setup(virtio_nic_dev_t* virtio_nic_dev)
 
     int err = 0;
 
+    virtio_read_mac_addr(virtio_nic_dev);
+
     err = virtio_nic_setup_virtqueues(virtio_nic_dev);
     if (err != 0) return err;
+
+    // err = virtio_fill_rcvq(virtio_nic_dev);
+    // if (err != 0) return err;
 
     return 0;
 }

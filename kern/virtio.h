@@ -107,6 +107,13 @@ typedef struct Virtqueue
 
 } virtqueue_t;
 
+typedef struct Buffer_info
+{
+    uint64_t addr;
+    size_t size;
+
+} buffer_info_t;
+
 uint8_t  virtio_read8 (const pci_dev_general_t* virtio_nic_dev, uint32_t offs);
 uint16_t virtio_read16(const pci_dev_general_t* virtio_nic_dev, uint32_t offs);
 uint32_t virtio_read32(const pci_dev_general_t* virtio_nic_dev, uint32_t offs);
@@ -131,6 +138,24 @@ static inline size_t vring_calc_size(uint16_t size)
 {
     return ALIGN(sizeof(vring_desc_t) * size + sizeof(uint16_t) * (2 + size), QALIGN)
          + ALIGN(sizeof(uint16_t) * 2 + sizeof(vring_used_elem_t) * size, QALIGN);
+}
+
+static inline void virtq_used_not_disable(virtqueue_t* virtqueue)
+{
+    assert(virtqueue);
+    virtqueue->vring.avail->flags = 1;
+}
+
+static inline void virtq_used_not_enable (virtqueue_t* virtqueue)
+{
+    assert(virtqueue);
+    virtqueue->vring.avail->flags = 0;
+}
+
+static inline bool virtq_avail_not_check(const virtqueue_t* virtqueue)
+{
+    assert(virtqueue);
+    return virtqueue->vring.used->flags;
 }
 
 #endif /* !JOS_KERN_VIRTIO_H */

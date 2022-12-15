@@ -63,15 +63,47 @@ void init_net(void)
 
     cprintf("Net initialization successfully finished. \n");
 
-    // // TEST
-    // static buffer_info_t buffers[3] = {{.addr = 0x050, .flags = BUFFER_INFO_F_WRITE, .len = 100},
-    //                                    {.addr = 0x200, .flags = 0,                   .len = 240},
-    //                                    {.addr = 0x400, .flags = BUFFER_INFO_F_WRITE, .len = 500}};
-    // virtio_snd_buffers((virtio_dev_t*)&virtio_nic_dev, SNDQ, buffers, 3);
-    // dump_virtqueue(&(virtio_nic_dev.virtio_dev.queues[SNDQ]));
+    // TEST
+
+    static const char buf[12] = "Hello world";
+
+    buffer_info_t bufi = {.addr = (uint64_t) buf, .flags = 0, .len = 12};
+    virtio_nic_snd_buffer(&virtio_nic_dev, &bufi);
+
+    // dump_virtqueue(&virtio_nic_dev.virtio_dev.queues[SNDQ]);
 
     return;
 }
+
+void virtio_nic_snd_buffer(virtio_nic_dev_t* virtio_nic_dev, const buffer_info_t* buffer_info)
+{
+    assert(virtio_nic_dev);
+    assert(buffer_info);
+
+    static virtio_net_hdr_t net_hdr = { 0 };
+    // TODO work with header
+    net_hdr.flags       = VIRTIO_NET_HDR_F_NEEDS_CSUM;
+    net_hdr.gso_type    = VIRTIO_NET_HDR_GSO_NONE;
+    net_hdr.csum_start  = 0;
+    net_hdr.csum_offset = buffer_info->len;
+    net_hdr.hdr_len     =  
+    net_hdr.gso_size    =  
+    net_hdr.num_buffers = 
+
+    buffer_info_t to_send[2] = { 0 };
+
+    to_send[0].flags = 0;
+    to_send[0].addr  = (uint64_t) &net_hdr;
+    to_send[0].len   = sizeof(net_hdr);
+
+    to_send[1].flags = buffer_info->flags;
+    to_send[1].addr  = buffer_info->addr;
+    to_send[1].len   = buffer_info->len;
+
+    virtio_snd_buffers((virtio_dev_t*) virtio_nic_dev, SNDQ, to_send, 2);
+    return;
+}
+
 
 void net_irq_handler(void)
 {
@@ -155,7 +187,11 @@ static int virtio_nic_dev_neg_features(virtio_nic_dev_t* virtio_nic_dev)
     if (trace_net)
         cprintf("Device features: 0x%x \n", supported_f);
 
-    uint32_t requested_f = VIRTIO_NET_F_MAC; // (VIRTIO_F_VERSION_1 is not set - using Legacy Interface)
+    uint32_t requested_f = VIRTIO_NET_F_MAC
+                         | VIRTIO_NET_F_CSUM
+                        //  | VIRTIO_NET_F_HOST_UFO
+                        //  | VIRTIO_NET_F_GUEST_CSUM
+                        //  | VIRTIO_NET_F_GUEST_UFO; // (VIRTIO_F_VERSION_1 is not set - using Legacy Interface)
 
     if (trace_net)
         cprintf("Guest features (requested): 0x%x \n", requested_f);

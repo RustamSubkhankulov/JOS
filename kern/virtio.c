@@ -55,23 +55,29 @@ void dump_virtqueue(const virtqueue_t* virtqueue)
     cprintf("VRING.DESC: \n");
     for (unsigned iter = 0; iter < virtqueue->vring.num; iter++)
     {
-        cprintf("DESC[%03d]: addr: 0x%lx len: %d flags: 0x%x next: %d \n", iter, virtqueue->vring.desc[iter].addr,
+        cprintf("DESC[%03d]: addr: 0x%lx len: %d flags: 0x%x next: %d | ", iter, virtqueue->vring.desc[iter].addr,
                                                                                  virtqueue->vring.desc[iter].len,
                                                                                  virtqueue->vring.desc[iter].flags,
                                                                                  virtqueue->vring.desc[iter].next);
+        if ((iter % 2) == 0)
+            cprintf("\n");
     }
 
     cprintf("VRING.AVAIL: flags: 0x%x idx: %d \n", virtqueue->vring.avail->flags, virtqueue->vring.avail->idx);
     for (unsigned iter = 0; iter < virtqueue->vring.num; iter++)
     {
-        cprintf("RING[%03d]: 0x%x \n", iter, virtqueue->vring.avail->ring[iter]);
+        cprintf("RING[%03d]: 0x%x | ", iter, virtqueue->vring.avail->ring[iter]);
+        if ((iter % 4) == 0)
+            cprintf("\n");
     }
 
     cprintf("VRING.USED: flags: 0x%x idx: %d \n", virtqueue->vring.used->flags, virtqueue->vring.used->idx);
     for (unsigned iter = 0; iter < virtqueue->vring.num; iter++)
     {
-        cprintf("RING[%03d]: index: %d lenght: %d \n", iter, virtqueue->vring.used->ring[iter].index, 
-                                                             virtqueue->vring.used->ring[iter].length);
+        cprintf("RING[%03d]: index: %d lenght: %d | ", iter, virtqueue->vring.used->ring[iter].index, 
+                                                            virtqueue->vring.used->ring[iter].length);
+        if ((iter % 3) == 0)
+            cprintf("\n");
     }
 
     return;

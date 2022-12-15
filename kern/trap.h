@@ -16,6 +16,7 @@ extern struct Pseudodesc idt_pd;
 extern bool in_page_fault;
 
 void clock_idt_init(void);
+void net_idt_init(void);
 void trap_init(void);
 void trap_init_percpu(void);
 void print_regs(struct PushRegs *regs);

@@ -123,7 +123,7 @@ static int virtio_nic_dev_neg_features(virtio_nic_dev_t* virtio_nic_dev)
     if (trace_net)
         cprintf("Device features: 0x%x \n", supported_f);
 
-    uint32_t requested_f = VIRTIO_NET_F_CTRL_VQ;
+    uint32_t requested_f = VIRTIO_NET_F_CTRL_VQ; // (VIRTIO_F_VERSION_1 is not set - using Legacy Interface)
 
     if (trace_net)
         cprintf("Guest features (requested): 0x%x \n", requested_f);
@@ -172,7 +172,7 @@ static int virtio_nic_alloc_virtqueues(virtio_nic_dev_t* virtio_nic_dev, virtque
     if (allocated == NULL)
         return -1;
 
-    void* memory = (void*) ((uint64_t) allocated->addr);
+    void* memory = (void*) ((uint64_t) page2pa(allocated));
 
     for (unsigned iter = 0; iter < QUEUE_NUM; iter++)
     {

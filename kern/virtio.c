@@ -24,7 +24,7 @@ static void* vring_alloc_mem(size_t mem_size)
     if (allocated_page == NULL)
         return NULL;
 
-    return (void*) (uint64_t) allocated_page->addr;
+    return (void*) ((uint64_t) page2pa(allocated_page));
 }
 
 int virtio_setup_virtqueue(virtqueue_t* virtqueue, uint16_t size)

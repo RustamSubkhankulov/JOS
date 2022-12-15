@@ -120,6 +120,8 @@ typedef struct Virtio_dev
 
 } virtio_dev_t;
 
+#define BUFFER_INFO_F_WRITE (1 << 0) // Buffer is writable
+
 typedef struct Buffer_info
 {
     uint64_t addr;
@@ -169,7 +171,8 @@ static inline void virtq_used_not_enable (virtqueue_t* virtqueue)
     virtqueue->vring.avail->flags = 0;
 }
 
-static inline bool virtq_avail_not_check(const virtqueue_t* virtqueue)
+// 1 - should not send; 0 - send avail notification
+static inline bool virtq_avail_not_suppressed_check(const virtqueue_t* virtqueue)
 {
     assert(virtqueue);
     return virtqueue->vring.used->flags;

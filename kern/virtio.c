@@ -20,6 +20,7 @@ void virtio_snd_buffers(virtio_dev_t* virtio_dev, unsigned qind, const buffer_in
     assert(virtio_dev);
     assert(buffer_info);
     assert(qind < virtio_dev->queues_n);
+    assert(buffers_num < virtio_dev->queues[qind].vring.num);
 
     if (buffers_num == 0)
         return;
@@ -27,19 +28,54 @@ void virtio_snd_buffers(virtio_dev_t* virtio_dev, unsigned qind, const buffer_in
     virtqueue_t* virtqueue = virtio_dev->queues + qind;
     uint16_t chain_head = virtio_descr_add_buffers(virtqueue, buffer_info, buffers_num);
     
-    uint16_t avail_ind = virtqueue->vring.avail->idx;
+    uint16_t avail_ind = virtqueue->vring.avail->idx % virtqueue->vring.num;
     virtqueue->vring.avail->ring[avail_ind] = chain_head;
+    virtqueue->last_avail = avail_ind;
 
     mfence();
-    virtqueue->vring.avail->idx = (avail_ind + 1) % virtqueue->vring.num;
+    virtqueue->vring.avail->idx += 1;
     mfence();
 
-    if (virtio)
+    if (!virtq_avail_not_suppressed_check(virtqueue))
+    {
+        virtio_write16(virtio_dev, VIRTIO_PCI_QUEUE_NOTIFY, (uint16_t) qind);
+    }
+
+    return;
 }
 
 static void dump_virtqueue(const virtqueue_t* virtqueue)
 {
     assert(virtqueue);
+
+    cprintf("FREE_INDEX: %d LAST_USED: %d LAST_AVAIL: %d \n", virtqueue->free_index,
+                                                              virtqueue->last_used,
+                                                              virtqueue->last_avail);
+
+    cprintf("VRING.NUM %d \n", virtqueue->vring.num);
+
+    cprintf("VRING.DESC: \n");
+    for (unsigned iter = 0; iter < virtqueue->vring.num; iter++)
+    {
+        cprintf("DESC[%d]: addr: 0x%lx len: %d flags: 0x%x next: %d \n", iter, virtqueue->vring.desc[iter].addr,
+                                                                               virtqueue->vring.desc[iter].len,
+                                                                               virtqueue->vring.desc[iter].flags,
+                                                                               virtqueue->vring.desc[iter].next);
+    }
+
+    cprintf("VRING.AVAIL: flags: 0x%x idx: %d \n", virtqueue->vring.avail->flags, virtqueue->vring.avail->idx);
+    for (unsigned iter = 0; iter < virtqueue->vring.num; iter++)
+    {
+        cprintf("RING[%d]: 0x%x \n", iter, virtqueue->vring.avail->ring[iter]);
+    }
+
+    cprintf("VRING.USED: flags: 0x%x idx: %d \n", virtqueue->vring.used->flags, virtqueue->vring.used->idx);
+    for (unsigned iter = 0; iter < virtqueue->vring.num; iter++)
+    {
+        cprintf("RING[%d]: index: %d lenght: %d \n", iter, virtqueue->vring.used->ring[iter].index, 
+                                                           virtqueue->vring.used->ring[iter].length);
+    }
+
     return; // TODO
 }
 
@@ -61,10 +97,12 @@ static uint16_t virtio_descr_add_buffers(virtqueue_t* virtqueue, const buffer_in
 
         virtqueue->vring.desc[descr_free].len   = cur_buffer->len;
         virtqueue->vring.desc[descr_free].addr  = cur_buffer->addr;
-        virtqueue->vring.desc[descr_free].flags = cur_buffer->flags;
         
         if (iter != buffers_num - 1)
             virtqueue->vring.desc[descr_free].flags |= VIRTQ_DESC_F_NEXT;
+
+        if (cur_buffer->flags & BUFFER_INFO_F_WRITE)
+            virtqueue->vring.desc[descr_free].flags |= VIRTQ_DESC_F_WRITE;
 
         uint16_t buffer_next = (iter == buffers_num - 1)? 0: next_descr_free;
         virtqueue->vring.desc[descr_free].next = buffer_next;

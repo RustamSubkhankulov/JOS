@@ -14,6 +14,9 @@ static int virtio_nic_dev_neg_features(virtio_nic_dev_t* virtio_nic_dev);
 static int virtio_nic_setup           (virtio_nic_dev_t* virtio_nic_dev);
 static int virtio_nic_setup_virtqueues(virtio_nic_dev_t* virtio_nic_dev);
 
+static int virtio_nic_alloc_virtqueues(virtio_nic_dev_t* virtio_nic_dev, 
+                                                   virtqueue_t** queues);
+
 static int virtio_nic_check_and_reset (virtio_nic_dev_t* virtio_nic_dev);
 
 void init_net(void)
@@ -115,21 +118,138 @@ static int virtio_nic_dev_neg_features(virtio_nic_dev_t* virtio_nic_dev)
 {
     assert(virtio_nic_dev);
 
-    // TODO
+    uint32_t supported_f = virtio_read32((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_DEVICE_FEATURES);
+    
+    if (trace_net)
+        cprintf("Device features: 0x%x \n", supported_f);
 
-    virtio_write8((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_QUEUE_SELECT, 3);
+    uint32_t requested_f = VIRTIO_NET_F_CTRL_VQ;
+
+    if (trace_net)
+        cprintf("Guest features (requested): 0x%x \n", requested_f);
+
+    if (requested_f != 0 && !(supported_f & requested_f))
+    {
+        if (trace_net)
+            cprintf("Device does not support requested features. \n");
+
+        virtio_set_dev_status_flag((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_STATUS_FAILED);
+        return -1;
+    }
+
+    virtio_nic_dev->features = supported_f & requested_f;
+
+    virtio_write32((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_GUEST_FEATURES, requested_f);
+    virtio_set_dev_status_flag((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_STATUS_FEATURES_OK);
+
+    bool features_ok = virtio_check_dev_status_flag((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_STATUS_FEATURES_OK);
+    if (!features_ok)
+    {
+        if (trace_net)
+            cprintf("Device does not support requested subset of features and thus it is unusuble. \n");
+        
+        virtio_set_dev_status_flag((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_STATUS_FAILED);
+        return -1;
+    }
+
+    return 0;
+}
+
+static int virtio_nic_alloc_virtqueues(virtio_nic_dev_t* virtio_nic_dev, virtqueue_t** queues)
+{
+    assert(virtio_nic_dev); 
+
+    size_t size = QUEUE_NUM * sizeof(virtqueue_t);
+    int class = 0;
+
+    for (; class < MAX_CLASS; class++)
+    {
+        if (size < CLASS_SIZE(class))
+            break;
+    }
+
+    struct Page* allocated = alloc_page(class, 0);
+    if (allocated == NULL)
+        return -1;
+
+    void* memory = (void*) ((uint64_t) allocated->addr);
+
+    for (unsigned iter = 0; iter < QUEUE_NUM; iter++)
+    {
+        queues[iter] =  (virtqueue_t*) memory + iter;
+    }
 
     return 0;
 }
 
 static int virtio_nic_setup_virtqueues(virtio_nic_dev_t* virtio_nic_dev)
 {
-    assert(virtio_nic_dev); // TODO
+    assert(virtio_nic_dev); 
+
+    pci_dev_general_t* pci_dev_general = (pci_dev_general_t*) virtio_nic_dev;
+    virtqueue_t* queues[QUEUE_NUM] = { 0 };
+
+    int err = virtio_nic_alloc_virtqueues(virtio_nic_dev, queues);
+    if (err != 0)
+    {
+        if (trace_net)
+            cprintf("Failed to alloc memory for virtqueues. \n");
+        
+        virtio_set_dev_status_flag((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_STATUS_FAILED);
+        return -1;
+    }
+
+    for (unsigned iter = 0; iter < QUEUE_NUM; iter++)
+    {
+        virtio_write16(pci_dev_general, VIRTIO_PCI_QUEUE_SELECT, iter);
+        uint16_t size = virtio_read16(pci_dev_general, VIRTIO_PCI_QUEUE_SIZE);
+
+        if (trace_net)
+            cprintf("QueueN%d size: 0x%x \n", iter, size);
+
+        if (size == 0)
+        {
+            if (trace_net)
+                cprintf("All requested queues must exist. \n");
+
+            virtio_set_dev_status_flag((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_STATUS_FAILED);
+            return -1;
+        }
+
+        err = virtio_setup_virtqueue(queues[iter], size);
+        if (err != 0)
+        {
+            if (trace_net)
+                cprintf("Failed to allocate memory for virtqueue. \n");
+
+            virtio_set_dev_status_flag((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_STATUS_FAILED);
+            return -1;
+        }
+
+        virtio_write16(pci_dev_general, VIRTIO_PCI_QUEUE_SELECT, iter);
+        virtio_write32(pci_dev_general, VIRTIO_PCI_QUEUE_ADDR, (uint64_t) queues[iter]->vring.desc / PAGE_SIZE);
+    
+        if (trace_net)
+            cprintf("Address of memory allocated for QUEUEN%d: 0x%lx IN PAGES: 0x%llx \n", iter,
+                                                            (uint64_t) queues[iter]->vring.desc, 
+                                                            (uint64_t) queues[iter]->vring.desc / PAGE_SIZE);
+    }
+
+    virtio_nic_dev->rcvq  = queues[0];
+    virtio_nic_dev->sndq  = queues[1];
+    virtio_nic_dev->ctrlq = queues[2];
+
     return 0;
 }
 
 static int virtio_nic_setup(virtio_nic_dev_t* virtio_nic_dev)
 {
-    assert(virtio_nic_dev); // TODO
+    assert(virtio_nic_dev);
+
+    int err = 0;
+
+    err = virtio_nic_setup_virtqueues(virtio_nic_dev);
+    if (err != 0) return err;
+
     return 0;
 }

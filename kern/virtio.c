@@ -4,6 +4,70 @@
 
 #include <kern/traceopt.h>
 #include <kern/virtio.h>
+#include <kern/pmap.h>
+#include <inc/string.h>
+
+static size_t vring_calc_size(uint16_t size);
+static void*  vring_alloc_mem(size_t mem_size);
+
+static void* vring_alloc_mem(size_t mem_size)
+{
+    int class = 0; 
+
+    for (; class < MAX_CLASS; class++)
+    {
+        if (mem_size <= CLASS_SIZE(class))
+            break;
+    }
+
+    struct Page* allocated_page = alloc_page(class, 0);
+    if (allocated_page == NULL)
+        return NULL;
+
+    return (void*) (uint64_t) allocated_page->addr;
+}
+
+int virtio_setup_virtqueue(virtqueue_t* virtqueue, uint16_t size)
+{
+    assert(virtqueue);
+
+    int err = virtio_setup_vring(&(virtqueue->vring), size);
+    if (err != 0) return err;
+
+    virtqueue->free_index     = 0;
+    virtqueue->last_seen_used = 0;
+    virtqueue->num_free       = size;
+
+    return 0;
+}
+
+int virtio_setup_vring(vring_t* vring, uint16_t size)
+{
+    assert(vring);
+
+    size_t mem_size = vring_calc_size(size);
+
+    void* memory = vring_alloc_mem(mem_size);
+    if (memory == NULL)
+        return -1;
+
+    if ((uint64_t) memory > 4 * GB)
+    {
+        if (trace_net)
+            cprintf("Physical addresses higher than 4 are not supported. ");
+
+        return -1;
+    }
+
+    memset(memory, 0x0, mem_size);
+    vring->num = size;
+
+    vring->desc  = (vring_desc_t*) memory;
+    vring->avail = (vring_avail_t*) ((unsigned char*) memory + sizeof(vring_desc_t) * size);
+    vring->used  = (vring_used_t*) &((unsigned char*) memory)[ALIGN(sizeof(vring_desc_t) * size + sizeof(uint16_t) * (2 + size), QALIGN)];
+
+    return 0;
+}
 
 uint8_t virtio_read8(const pci_dev_general_t* virtio_nic_dev, uint32_t offs)
 {

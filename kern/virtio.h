@@ -8,6 +8,7 @@
 #include <inc/x86.h>
 
 #include <kern/pci.h>
+#include <kern/pmap.h>
 
 const static uint16_t Virtio_pci_vendor_id = 0x1AF4;
 
@@ -76,7 +77,6 @@ typedef struct Vring_used_elem
 
 } vring_used_elem_t;
 
-
 #define VIRTQ_USED_F_NO_NOTIFY  1 
 
 typedef struct Vring_used
@@ -120,5 +120,17 @@ bool virtio_check_dev_status_flag(const pci_dev_general_t* virtio_nic_dev, uint8
 
 bool virtio_check_dev_feature(const pci_dev_general_t* virtio_nic_dev, uint8_t feature);
 void virtio_set_guest_feature(      pci_dev_general_t* virtio_nic_dev, uint8_t feature);
+
+int virtio_setup_virtqueue(virtqueue_t* virtqueue, uint16_t size);
+int virtio_setup_vring(vring_t* vring, uint16_t size);
+
+#define ALIGN(x, qalign) (((x) + (qalign - 1)) & (~(qalign - 1))) 
+#define QALIGN PAGE_SIZE
+
+static inline size_t vring_calc_size(uint16_t size)
+{
+    return ALIGN(sizeof(vring_desc_t) * size + sizeof(uint16_t) * (2 + size), QALIGN)
+         + ALIGN(sizeof(uint16_t) * 2 + sizeof(vring_used_elem_t) * size, QALIGN);
+}
 
 #endif /* !JOS_KERN_VIRTIO_H */

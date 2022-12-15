@@ -107,8 +107,6 @@ list_del(struct List *list) {
     return list;
 }
 
-static struct Page *alloc_page(int class, int flags);
-
 void
 ensure_free_desc(size_t count) {
     if (free_desc_count < count) {
@@ -549,7 +547,7 @@ dump_page_table(pte_t *pml4) {
 }
 
 /* Just allocate page, without mapping it */
-static struct Page *
+struct Page *
 alloc_page(int class, int flags) {
     struct List *li = NULL;
     struct Page *peer = NULL;

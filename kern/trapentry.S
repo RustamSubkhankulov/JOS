@@ -27,4 +27,13 @@ timer_thdlr:
     call trap
     jmp .
 
+.globl net_thdlr
+.type net_thdlr, @function
+net_thdlr:
+    call save_trapframe_trap
+    # Set trap code for trapframe
+    movl $(IRQ_OFFSET + IRQ_NIC), 136(%rsp)
+    call trap
+    jmp .
+
 #endif

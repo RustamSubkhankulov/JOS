@@ -23,31 +23,55 @@ const static uint16_t Virtio_nic_device_id     = 0x01;   // network card
 
 #define MAC_ADDR_NUM 6
 
+/* Queues indexes in virtio_dev_t struct.queues */
 #define RCVQ 0
 #define SNDQ 1
 
 typedef struct Virtio_nic_dev
 {
     virtio_dev_t virtio_dev;
-
     uint8_t MAC[MAC_ADDR_NUM];
 
 } virtio_nic_dev_t;
 
-struct Virtio_nic_packet_header
-{
-    uint8_t flags;                 // Bit 0: Needs checksum; Bit 1: Received packet has valid data;
-                                   // Bit 2: If VIRTIO_NET_F_RSC_EXT was negotiated, the device processes
-                                   // duplicated ACK segments, reports number of coalesced TCP segments in ChecksumStart
-                                   // field and number of duplicated ACK segments in ChecksumOffset field,
-                                   // and sets bit 2 in Flags(VIRTIO_NET_HDR_F_RSC_INFO) 
-    uint8_t  segmentation_offload; // 0:None 1:TCPv4 3:UDP 4:TCPv6 0x80:ECN
-    uint16_t header_length;        // Size of header to be used during segmentation.
-    uint16_t segment_length;       // Maximum segment size (not including header).
-    uint16_t checksum_start;       // The position to begin calculating the checksum.
-    uint16_t checksum_offset;      // The position after ChecksumStart to store the checksum.
-    uint16_t buffer_count;         // Used when merging buffers.
-};
+// struct Virtio_nic_packet_header
+// {
+//     uint8_t flags;                 // Bit 0: Needs checksum; Bit 1: Received packet has valid data;
+//                                    // Bit 2: If VIRTIO_NET_F_RSC_EXT was negotiated, the device processes
+//                                    // duplicated ACK segments, reports number of coalesced TCP segments in ChecksumStart
+//                                    // field and number of duplicated ACK segments in ChecksumOffset field,
+//                                    // and sets bit 2 in Flags(VIRTIO_NET_HDR_F_RSC_INFO) 
+//     uint8_t  segmentation_offload; // 0:None 1:TCPv4 3:UDP 4:TCPv6 0x80:ECN
+//     uint16_t header_length;        // Size of header to be used during segmentation.
+//     uint16_t segment_length;       // Maximum segment size (not including header).
+//     uint16_t checksum_start;       // The position to begin calculating the checksum.
+//     uint16_t checksum_offset;      // The position after ChecksumStart to store the checksum.
+//     uint16_t buffer_count;         // Used when merging buffers.
+// };
+
+/* Flags in virtio_net_hdr_t.flags */
+#define VIRTIO_NET_HDR_F_NEEDS_CSUM    0x1 
+#define VIRTIO_NET_HDR_F_DATA_VALID    0x2 
+#define VIRTIO_NET_HDR_F_RSC_INFO      0x4 
+
+/* Types of virtio_net_hdr_t.gso_type */
+#define VIRTIO_NET_HDR_GSO_NONE        0x0 
+#define VIRTIO_NET_HDR_GSO_TCPV4       0x1 
+#define VIRTIO_NET_HDR_GSO_UDP         0x3 
+#define VIRTIO_NET_HDR_GSO_TCPV6       0x4 
+#define VIRTIO_NET_HDR_GSO_ECN         0x80 
+
+typedef struct Virtio_net_hdr 
+{ 
+    uint8_t flags; 
+    uint8_t gso_type; 
+    uint16_t hdr_len; 
+    uint16_t gso_size; 
+    uint16_t csum_start; 
+    uint16_t csum_offset; 
+    uint16_t num_buffers; 
+
+} virtio_net_hdr_t;
 
 /* Network Device Registers   Offs  Size*/
 #define VIRTIO_PCI_NET_MAC1   0x14  // 1

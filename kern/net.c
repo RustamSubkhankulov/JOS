@@ -7,6 +7,7 @@
 #include <kern/traceopt.h>
 #include <kern/net.h>
 #include <kern/pmap.h>
+#include <kern/picirq.h>
 
 static int virtio_nic_dev_init        (virtio_nic_dev_t* virtio_nic_dev);
 static int virtio_nic_dev_reset       (virtio_nic_dev_t* virtio_nic_dev);
@@ -20,6 +21,7 @@ static void virtio_read_mac_addr      (virtio_nic_dev_t* virtio_nic_dev);
 static int virtio_nic_alloc_virtqueues(virtio_nic_dev_t* virtio_nic_dev);
 
 static int virtio_nic_check_and_reset (virtio_nic_dev_t* virtio_nic_dev);
+
 void init_net(void)
 {
     if (trace_net)
@@ -60,6 +62,21 @@ void init_net(void)
         panic("Error occured during VirtIO NIC initialization. Pernel kanic. \n");
 
     cprintf("Net initialization successfully finished. \n");
+
+    // // TEST
+    // static buffer_info_t buffers[3] = {{.addr = 0x050, .flags = BUFFER_INFO_F_WRITE, .len = 100},
+    //                                    {.addr = 0x200, .flags = 0,                   .len = 240},
+    //                                    {.addr = 0x400, .flags = BUFFER_INFO_F_WRITE, .len = 500}};
+    // virtio_snd_buffers((virtio_dev_t*)&virtio_nic_dev, SNDQ, buffers, 3);
+    // dump_virtqueue(&(virtio_nic_dev.virtio_dev.queues[SNDQ]));
+
+    return;
+}
+
+void net_irq_handler(void)
+{
+    cprintf("NIC HANDLER HELLO! \n");
+    pic_send_eoi(IRQ_NIC);
     return;
 }
 
@@ -78,7 +95,17 @@ static int virtio_nic_dev_init(virtio_nic_dev_t* virtio_nic_dev)
     err = virtio_nic_setup(virtio_nic_dev); // device specific setup
     if (err != 0) return err;
 
-    virtio_set_dev_status_flag((virtio_dev_t*) virtio_nic_dev, VIRTIO_PCI_STATUS_DRIVER_OK);
+    if (virtio_nic_dev->virtio_dev.pci_dev_general.interrupt_line != IRQ_NIC)
+    {
+        cprintf("VirtIO network card cupported only on IRQ 11 \n");
+
+        virtio_set_dev_status_flag((virtio_dev_t*) virtio_nic_dev, VIRTIO_PCI_STATUS_FAILED);
+        return -1;
+    }
+
+    pic_irq_unmask(IRQ_NIC);
+
+    virtio_set_dev_status_flag((virtio_dev_t*) virtio_nic_dev, VIRTIO_PCI_STATUS_DRIVER_OK);    
     return 0;
 }
 

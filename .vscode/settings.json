@@ -4,6 +4,7 @@
         "x86.h": "c",
         "kclock.h": "c",
         "traceopt.h": "c",
-        "assert.h": "c"
+        "assert.h": "c",
+        "pmap.h": "c"
     }
 }

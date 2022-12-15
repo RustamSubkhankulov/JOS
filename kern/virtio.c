@@ -12,8 +12,6 @@ static void*  vring_alloc_mem(size_t mem_size);
 static uint16_t virtio_descr_add_buffers(virtqueue_t* virtqueue, const buffer_info_t* buffer_info, 
                                                                              unsigned buffers_num);
 
-static void dump_virtqueue(const virtqueue_t* virtqueue);
-
 void virtio_snd_buffers(virtio_dev_t* virtio_dev, unsigned qind, const buffer_info_t* buffer_info, 
                                                                              unsigned buffers_num)
 {
@@ -44,7 +42,7 @@ void virtio_snd_buffers(virtio_dev_t* virtio_dev, unsigned qind, const buffer_in
     return;
 }
 
-static void dump_virtqueue(const virtqueue_t* virtqueue)
+void dump_virtqueue(const virtqueue_t* virtqueue)
 {
     assert(virtqueue);
 
@@ -57,26 +55,26 @@ static void dump_virtqueue(const virtqueue_t* virtqueue)
     cprintf("VRING.DESC: \n");
     for (unsigned iter = 0; iter < virtqueue->vring.num; iter++)
     {
-        cprintf("DESC[%d]: addr: 0x%lx len: %d flags: 0x%x next: %d \n", iter, virtqueue->vring.desc[iter].addr,
-                                                                               virtqueue->vring.desc[iter].len,
-                                                                               virtqueue->vring.desc[iter].flags,
-                                                                               virtqueue->vring.desc[iter].next);
+        cprintf("DESC[%03d]: addr: 0x%lx len: %d flags: 0x%x next: %d \n", iter, virtqueue->vring.desc[iter].addr,
+                                                                                 virtqueue->vring.desc[iter].len,
+                                                                                 virtqueue->vring.desc[iter].flags,
+                                                                                 virtqueue->vring.desc[iter].next);
     }
 
     cprintf("VRING.AVAIL: flags: 0x%x idx: %d \n", virtqueue->vring.avail->flags, virtqueue->vring.avail->idx);
     for (unsigned iter = 0; iter < virtqueue->vring.num; iter++)
     {
-        cprintf("RING[%d]: 0x%x \n", iter, virtqueue->vring.avail->ring[iter]);
+        cprintf("RING[%03d]: 0x%x \n", iter, virtqueue->vring.avail->ring[iter]);
     }
 
     cprintf("VRING.USED: flags: 0x%x idx: %d \n", virtqueue->vring.used->flags, virtqueue->vring.used->idx);
     for (unsigned iter = 0; iter < virtqueue->vring.num; iter++)
     {
-        cprintf("RING[%d]: index: %d lenght: %d \n", iter, virtqueue->vring.used->ring[iter].index, 
-                                                           virtqueue->vring.used->ring[iter].length);
+        cprintf("RING[%03d]: index: %d lenght: %d \n", iter, virtqueue->vring.used->ring[iter].index, 
+                                                             virtqueue->vring.used->ring[iter].length);
     }
 
-    return; // TODO
+    return;
 }
 
 static uint16_t virtio_descr_add_buffers(virtqueue_t* virtqueue, const buffer_info_t* buffer_info, 

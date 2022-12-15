@@ -147,6 +147,8 @@ void virtio_set_guest_feature(      virtio_dev_t* virtio_dev, uint8_t feature);
 int virtio_setup_virtqueue(virtqueue_t* virtqueue, uint16_t size);
 int virtio_setup_vring(vring_t* vring, uint16_t size);
 
+void dump_virtqueue(const virtqueue_t* virtqueue);
+
 void virtio_snd_buffers(virtio_dev_t* virtio_dev, unsigned qind, const buffer_info_t* buffer_info, unsigned buffers_num);
 // void virtio_rcv_buffer(virtio_dev_t* virtio_dev, unsigned qind, buffer_info_t* buffer_info);
 

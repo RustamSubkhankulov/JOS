@@ -89,7 +89,7 @@ typedef struct Vring_used
 
 typedef struct Vring
 {
-    unsigned num;
+    uint16_t num;
     
     vring_desc_t*  desc;
     vring_avail_t* avail;
@@ -102,34 +102,51 @@ typedef struct Virtqueue
     vring_t vring;
 
     uint16_t free_index;     // index of first free descriptor
-    uint16_t num_free;       // count of free descriptors
-    uint16_t last_seen_used; // last seen used
+    // uint16_t num_free;    // count of free descriptors 
+
+    uint16_t last_used;      // last seen used
+    uint16_t last_avail;
 
 } virtqueue_t;
+
+typedef struct Virtio_dev
+{
+    pci_dev_general_t pci_dev_general;
+
+    unsigned queues_n;
+    virtqueue_t* queues;
+    
+    uint32_t features; // features supported by both device & driver
+
+} virtio_dev_t;
 
 typedef struct Buffer_info
 {
     uint64_t addr;
-    size_t size;
+    uint32_t len;
+    uint16_t flags;
 
 } buffer_info_t;
 
-uint8_t  virtio_read8 (const pci_dev_general_t* virtio_nic_dev, uint32_t offs);
-uint16_t virtio_read16(const pci_dev_general_t* virtio_nic_dev, uint32_t offs);
-uint32_t virtio_read32(const pci_dev_general_t* virtio_nic_dev, uint32_t offs);
+uint8_t  virtio_read8 (const virtio_dev_t* virtio_dev, uint32_t offs);
+uint16_t virtio_read16(const virtio_dev_t* virtio_dev, uint32_t offs);
+uint32_t virtio_read32(const virtio_dev_t* virtio_dev, uint32_t offs);
 
-void virtio_write8 (const pci_dev_general_t* virtio_nic_dev, uint32_t offs, uint8_t  value);
-void virtio_write16(const pci_dev_general_t* virtio_nic_dev, uint32_t offs, uint16_t value);
-void virtio_write32(const pci_dev_general_t* virtio_nic_dev, uint32_t offs, uint32_t value);
+void virtio_write8 (const virtio_dev_t* virtio_dev, uint32_t offs, uint8_t  value);
+void virtio_write16(const virtio_dev_t* virtio_dev, uint32_t offs, uint16_t value);
+void virtio_write32(const virtio_dev_t* virtio_dev, uint32_t offs, uint32_t value);
 
-void virtio_set_dev_status_flag  (const pci_dev_general_t* virtio_nic_dev, uint8_t flag);
-bool virtio_check_dev_status_flag(const pci_dev_general_t* virtio_nic_dev, uint8_t flag);
+void virtio_set_dev_status_flag  (const virtio_dev_t* virtio_dev, uint8_t flag);
+bool virtio_check_dev_status_flag(const virtio_dev_t* virtio_dev, uint8_t flag);
 
-bool virtio_check_dev_feature(const pci_dev_general_t* virtio_nic_dev, uint8_t feature);
-void virtio_set_guest_feature(      pci_dev_general_t* virtio_nic_dev, uint8_t feature);
+bool virtio_check_dev_feature(const virtio_dev_t* virtio_dev, uint8_t feature);
+void virtio_set_guest_feature(      virtio_dev_t* virtio_dev, uint8_t feature);
 
 int virtio_setup_virtqueue(virtqueue_t* virtqueue, uint16_t size);
 int virtio_setup_vring(vring_t* vring, uint16_t size);
+
+void virtio_snd_buffers(virtio_dev_t* virtio_dev, unsigned qind, const buffer_info_t* buffer_info, unsigned buffers_num);
+// void virtio_rcv_buffer(virtio_dev_t* virtio_dev, unsigned qind, buffer_info_t* buffer_info);
 
 #define ALIGN(x, qalign) (((x) + (qalign - 1)) & (~(qalign - 1))) 
 #define QALIGN PAGE_SIZE

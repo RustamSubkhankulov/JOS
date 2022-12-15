@@ -4,6 +4,11 @@
 #include <inc/types.h>
 
 static inline void __attribute__((always_inline))
+mfence(void) {
+    asm volatile("mfence":::"memory");
+}
+
+static inline void __attribute__((always_inline))
 breakpoint(void) {
     asm volatile("int3");
 }

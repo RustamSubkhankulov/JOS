@@ -28,9 +28,7 @@ const static uint16_t Virtio_nic_device_id     = 0x01;   // network card
 
 typedef struct Virtio_nic_dev
 {
-    pci_dev_general_t pci_dev_general;
-    virtqueue_t* queues;
-    uint32_t features; // features supported by both device & driver
+    virtio_dev_t virtio_dev;
 
     uint8_t MAC[MAC_ADDR_NUM];
 

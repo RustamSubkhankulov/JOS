@@ -26,4 +26,16 @@ typedef struct udp_packet
     uint8_t datagram[ETHERNET_MTU - sizeof(ip_hdr_t) - sizeof(udp_hdr_t)];
 } __attribute__((packed)) udp_pkt_t;
 
+typedef struct ip_and_port
+{
+    ip_addr_t addr;
+    uint16_t  port;
+} __attribute__((packed)) ip_port_t;
+
+int wrap_in_udp(uint16_t src_port, uint16_t dst_port, 
+                uint16_t len, const void *data,
+                udp_pkt_t  *dst_struct);
+
+uint16_t udp_checksum(const void *src, size_t len);
+
 #endif /* !UDP_H */

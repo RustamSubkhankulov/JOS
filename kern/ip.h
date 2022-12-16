@@ -60,7 +60,8 @@ typedef struct ip_header
                                // REF: https://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml    
     
     uint16_t checksum;         // Should be recalculated at each translation step
-    
+                               // Should be 0 if not used
+
     ip_addr_t src_ip;
     ip_addr_t dst_ip;
 } __attribute__((packed)) ip_hdr_t;
@@ -71,10 +72,12 @@ typedef struct ip_packet
     uint8_t data[ETHERNET_MTU - sizeof(ip_hdr_t)];
 } __attribute__((packed)) ip_pkt_t;
 
-int wrap_in_ipv4(ip_addr_t dst, ip_addr_t src, 
-                const uint8_t *data, size_t len,
-                protocol_t prot, ip_pkt_t *dst_struct);
+int fill_in_ipv4(ip_addr_t src, ip_addr_t dst, const void *data,
+                 protocol_t prot, ip_pkt_t *dst_struct);
 
-uint16_t pkt_checksum(const void *src, size_t len);
+int wrap_in_ipv4(ip_addr_t src, ip_addr_t dst, const void *data,
+                 size_t len, protocol_t prot, ip_pkt_t *dst_struct);
+
+uint16_t ip_checksum(const void *src, size_t len);
 
 #endif /* !IP_H */

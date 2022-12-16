@@ -10,18 +10,16 @@
 
 // Wraps arbitrary datum into IPv4 header.
 int
-wrap_in_ipv4(
-    ip_addr_t      dst,
-    ip_addr_t      src,
-    const uint8_t *data,
-    size_t         len,
-    protocol_t     prot,
-    ip_pkt_t      *dst_struct
+fill_in_ipv4(
+    ip_addr_t   src,
+    ip_addr_t   dst,
+    const void *data,
+    protocol_t  prot,
+    ip_pkt_t   *dst_struct
 )
 {
     assert(dst_struct);
     assert(data);
-    assert(len < sizeof(ip_pkt_t) - sizeof(ip_hdr_t));
 
     ip_hdr_t *hdr = (ip_hdr_t*) dst_struct;
 
@@ -43,16 +41,35 @@ wrap_in_ipv4(
     hdr->ttl        = DEFAULT_TTL;
     hdr->protocol   = prot;
 
-    // FIXME: add checksum calculation
-    hdr->checksum = pkt_checksum(hdr, sizeof(ip_pkt_t));
+    hdr->src_ip = src;
+    hdr->dst_ip = dst;
 
-    
+    return 0;
+}
+
+int wrap_in_ipv4(
+    ip_addr_t   src,
+    ip_addr_t   dst,
+    const void *data,
+    size_t      len,
+    protocol_t  prot,
+    ip_pkt_t   *dst_struct
+)
+{
+    assert(len < sizeof(ip_pkt_t) - sizeof(ip_hdr_t));
+
+    fill_in_ipv4(src, dst, data, prot, dst_struct);
+
+    memcpy(dst_struct->data, data, len);
+
+    // FIXME: add checksum calculation
+    dst_struct->hdr.checksum = ip_checksum(&(dst_struct->hdr), sizeof(ip_pkt_t));
 
     return 0;
 }
 
 // TODO: implement
-uint16_t pkt_checksum(const void *src, size_t len)
+uint16_t ip_checksum(const void *src, size_t len)
 {
     (void) src;
     (void) len;

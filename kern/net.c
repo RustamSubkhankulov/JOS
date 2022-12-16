@@ -69,10 +69,17 @@ void init_net(void)
 
     // TEST
 
-    const char buf[12] = "Hello world";
+    char buf1[12] = "Hello world";
+    buffer_info_t bufi1 = {.addr = (uint64_t) buf1, .flags = BUFFER_INFO_F_COPY, .len = 11};
+    err = virtio_nic_snd_buffer(&virtio_nic_dev, &bufi1);
+    if (err != 0)
+    {
+        cprintf("Test virtio_nic_snd_buffer failed. \n");
+    }
 
-    buffer_info_t bufi = {.addr = (uint64_t) buf, .flags = BUFFER_INFO_F_COPY, .len = 12};
-    err = virtio_nic_snd_buffer(&virtio_nic_dev, &bufi);
+    char buf2[10] = "Goodb ye.";
+    buffer_info_t bufi2 = {.addr = (uint64_t) buf2, .flags = BUFFER_INFO_F_COPY, .len = 9};
+    err = virtio_nic_snd_buffer(&virtio_nic_dev, &bufi2);
     if (err != 0)
     {
         cprintf("Test virtio_nic_snd_buffer failed. \n");
@@ -95,6 +102,15 @@ int virtio_nic_snd_buffer(virtio_nic_dev_t* virtio_nic_dev, const buffer_info_t*
 {
     assert(virtio_nic_dev);
     assert(buffer_info); // TODO max size
+
+    clear_snd_buffers(virtio_nic_dev); // TODO: temporary here, until usage of nic in userspace is available
+
+    if (buffer_info->len > SND_MAX_SIZE)
+    {
+        if (trace_net)
+            cprintf("Size of sending buffer is more than possible maximum. Failed. \n");
+        return -1;
+    }
 
     virtio_net_hdr_t net_hdr = { 0 };
     // TODO work with header
@@ -119,12 +135,16 @@ int virtio_nic_snd_buffer(virtio_nic_dev_t* virtio_nic_dev, const buffer_info_t*
     return virtio_snd_buffers((virtio_dev_t*) virtio_nic_dev, SNDQ, to_send, 2);
 }
 
-
 void net_irq_handler(void)
 {
-    cprintf("NIC HANDLER HELLO! \n");
+    if (trace_net)
+        cprintf("NIC HANDLER HELLO HELLO BITCHES! \n");
 
-    // read isr & maybe clear_snd_buffers()? TODO
+    uint8_t isr_status = virtio_read8((virtio_dev_t*) Virtio_nic_device, VIRTIO_PCI_ISR_STATUS);
+    if (isr_status & ISR_STATUS_QUEUE_INT)
+    {
+        clear_snd_buffers(Virtio_nic_device);
+    }
 
     pic_send_eoi(IRQ_NIC);
     return;
@@ -157,6 +177,7 @@ static int virtio_nic_dev_init(virtio_nic_dev_t* virtio_nic_dev)
     }
 
     pic_irq_unmask(IRQ_NIC);
+
     if (trace_net)
         cprintf("IRQ_NET unmasked. \n");
 
@@ -228,7 +249,7 @@ static int virtio_nic_dev_neg_features(virtio_nic_dev_t* virtio_nic_dev)
 
     uint32_t requested_f = VIRTIO_NET_F_MAC
                          | VIRTIO_NET_F_CSUM;
-                        //  | VIRTIO_NET_F_HOST_UFO
+                        //  | VIRTIO_NET_F_HOST_UFO   // These features may be used in future.  
                         //  | VIRTIO_NET_F_GUEST_CSUM
                         //  | VIRTIO_NET_F_GUEST_UFO; // (VIRTIO_F_VERSION_1 is not set - using Legacy Interface)
 
@@ -346,7 +367,8 @@ static int virtio_nic_setup_virtqueues(virtio_nic_dev_t* virtio_nic_dev)
     virtio_nic_dev->virtio_dev.queues_n = QUEUE_NUM;
 
     virtq_used_notif_enable(&(virtio_nic_dev->virtio_dev.queues[SNDQ]));
-    virtq_used_notif_enable(&(virtio_nic_dev->virtio_dev.queues[RCVQ])); // TODO: temporary disable
+    virtq_used_notif_disable(&(virtio_nic_dev->virtio_dev.queues[RCVQ])); // TODO: temporary disable since receive is not supported yet
+                                                                          // Note: disabling ism't strict for device, it can still deliver notification
 
     if (trace_net)
         cprintf("VirtIO nic virtqueues setup completed. \n");
@@ -421,12 +443,12 @@ static int virtio_nic_setup(virtio_nic_dev_t* virtio_nic_dev)
 static void clear_snd_buffers(virtio_nic_dev_t* virtio_nic_dev)
 {
     assert(virtio_nic_dev);
-    virtqueue_t* sndq = &(virtio_nic_dev->virtio_dev.queues[RCVQ]);
+    virtqueue_t* sndq = &(virtio_nic_dev->virtio_dev.queues[SNDQ]);
 
     if (trace_net)
         cprintf("Reclaiming used buffers in sndq. Num_free mow is %d. \n", sndq->num_free);
 
-    while (sndq->last_used != sndq->vring.used->idx)  // TODO
+    while (sndq->last_used != sndq->vring.used->idx)
     {
         uint16_t index = sndq->last_used % sndq->vring.num;
 
@@ -440,13 +462,12 @@ static void clear_snd_buffers(virtio_nic_dev_t* virtio_nic_dev)
             desc_idx = sndq->vring.desc[desc_idx].next;
         }
 
-        sndq->num_free += chain_len;
-
+        sndq->num_free  += chain_len;
         sndq->last_used += 1;
     }
 
     if (trace_net)
-        cprintf("Reclaimed used buffers. Num_free now is %d \n", sndq->num_free);
+        cprintf("Cleared used buffers. Num_free now is %d \n", sndq->num_free);
 
     return;
 }
@@ -454,5 +475,46 @@ static void clear_snd_buffers(virtio_nic_dev_t* virtio_nic_dev)
 static void reclaim_rcv_buffers(virtio_nic_dev_t* virtio_nic_dev)
 {
     assert(virtio_nic_dev);
-    return; // TODO
+    virtqueue_t* rcvq = &(virtio_nic_dev->virtio_dev.queues[RCVQ]);
+
+    if (trace_net)
+        cprintf("Reclaiming used buffers in rcvq. Num_free mow is %d. \n", rcvq->num_free);
+
+    while (rcvq->last_used != rcvq->vring.used->idx)
+    {
+        uint16_t index = rcvq->last_used % rcvq->vring.num;
+
+        vring_used_elem_t* used_elem = &(rcvq->vring.used->ring[index]);
+        uint16_t desc_idx = used_elem->index;
+
+        
+        buffer_info_t buffer_info = {.addr  =  rcvq->vring.desc[desc_idx].addr,
+                                     .flags = (rcvq->vring.desc[desc_idx].flags & VIRTQ_DESC_F_WRITE)? BUFFER_INFO_F_WRITE: 0, 
+                                     .len   =  rcvq->vring.desc[desc_idx].len};
+        rcvq->num_free += 1;
+        int err = virtio_snd_buffers((virtio_dev_t*) virtio_nic_dev, RCVQ, &buffer_info, 1);
+        if (err != 0)
+            panic("failed to reclaim buffer in rcvq. \n");
+
+        while (rcvq->vring.desc[desc_idx].flags & VIRTQ_DESC_F_NEXT)
+        {
+            desc_idx = rcvq->vring.desc[desc_idx].next;
+
+            buffer_info.addr  =  rcvq->vring.desc[desc_idx].addr;
+            buffer_info.flags = (rcvq->vring.desc[desc_idx].flags & VIRTQ_DESC_F_WRITE)? BUFFER_INFO_F_WRITE: 0;
+            buffer_info.len   =  rcvq->vring.desc[desc_idx].len;
+            rcvq->num_free += 1;
+
+            err = virtio_snd_buffers((virtio_dev_t*) virtio_nic_dev, RCVQ, &buffer_info, 1);
+            if (err != 0)
+                panic("failed to reclaim buffer in rcvq. \n");
+        }
+
+        rcvq->last_used += 1;
+    }
+
+    if (trace_net)
+        cprintf("Reclaimed used buffers. Num_free now is %d \n", rcvq->num_free);
+
+    return;
 }

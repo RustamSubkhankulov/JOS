@@ -44,6 +44,9 @@ int virtio_snd_buffers(virtio_dev_t* virtio_dev, unsigned qind, const buffer_inf
 
     if (!virtq_avail_notif_suppressed_check(virtqueue))
     {
+        // if (trace_net)
+            // cprintf("Avail notifications are not suppressed. Sending notification \n");
+
         virtio_write16(virtio_dev, VIRTIO_PCI_QUEUE_NOTIFY, (uint16_t) qind);
     }
 

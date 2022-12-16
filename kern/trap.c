@@ -260,6 +260,7 @@ trap_dispatch(struct Trapframe *tf) {
         }
     case IRQ_OFFSET + IRQ_NIC:
         {
+            // cprintf("Caught IRQ_NIC \n");
             void net_irq_handler();
             return;
         }

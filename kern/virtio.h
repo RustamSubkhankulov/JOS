@@ -171,13 +171,13 @@ static inline size_t vring_calc_size(uint16_t size)
 static inline void virtq_used_notif_disable(virtqueue_t* virtqueue)
 {
     assert(virtqueue);
-    virtqueue->vring.avail->flags = 1;
+    virtqueue->vring.avail->flags = 1; // spec: If flags is 1, the device SHOULD NOT send a notification
 }
 
 static inline void virtq_used_notif_enable (virtqueue_t* virtqueue)
 {
     assert(virtqueue);
-    virtqueue->vring.avail->flags = 0;
+    virtqueue->vring.avail->flags = 0; // spec: If flags is 0, the device MUST send a notification
 }
 
 // 1 - should not send; 0 - send avail notification

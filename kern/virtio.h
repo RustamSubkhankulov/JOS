@@ -121,6 +121,7 @@ typedef struct Virtio_dev
 } virtio_dev_t;
 
 #define BUFFER_INFO_F_WRITE (1 << 0) // Buffer is writable
+#define BUFFER_INFO_F_COPY  (1 << 1) // Kernel must copy this buffer
 
 typedef struct Buffer_info
 {

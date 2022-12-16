@@ -19,7 +19,7 @@ const static uint16_t Virtio_nic_device_id     = 0x01;   // network card
 /* Receive and send queues */
 #define QUEUE_NUM 2
 
-#define RCV_BUFFER_SIZE 2048
+#define RCV_MAX_SIZE 1526 // size of maximum incoming packet + net header + ethernet header
 
 #define MAC_ADDR_NUM 6
 

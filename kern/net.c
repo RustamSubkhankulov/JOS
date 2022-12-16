@@ -86,9 +86,9 @@ void virtio_nic_snd_buffer(virtio_nic_dev_t* virtio_nic_dev, const buffer_info_t
     net_hdr.gso_type    = VIRTIO_NET_HDR_GSO_NONE;
     net_hdr.csum_start  = 0;
     net_hdr.csum_offset = buffer_info->len;
-    net_hdr.hdr_len     =  
-    net_hdr.gso_size    =  
-    net_hdr.num_buffers = 
+    net_hdr.hdr_len     = 0; 
+    net_hdr.gso_size    = 0; 
+    net_hdr.num_buffers = 0;
 
     buffer_info_t to_send[2] = { 0 };
 
@@ -188,7 +188,7 @@ static int virtio_nic_dev_neg_features(virtio_nic_dev_t* virtio_nic_dev)
         cprintf("Device features: 0x%x \n", supported_f);
 
     uint32_t requested_f = VIRTIO_NET_F_MAC
-                         | VIRTIO_NET_F_CSUM
+                         | VIRTIO_NET_F_CSUM;
                         //  | VIRTIO_NET_F_HOST_UFO
                         //  | VIRTIO_NET_F_GUEST_CSUM
                         //  | VIRTIO_NET_F_GUEST_UFO; // (VIRTIO_F_VERSION_1 is not set - using Legacy Interface)

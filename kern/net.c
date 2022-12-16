@@ -9,23 +9,27 @@
 #include <kern/pmap.h>
 #include <kern/picirq.h>
 
+static virtio_nic_dev_t* Virtio_nic_device = NULL;
+
 static int virtio_nic_dev_init        (virtio_nic_dev_t* virtio_nic_dev);
 static int virtio_nic_dev_reset       (virtio_nic_dev_t* virtio_nic_dev);
 static int virtio_nic_dev_neg_features(virtio_nic_dev_t* virtio_nic_dev);
 
 static int virtio_nic_setup           (virtio_nic_dev_t* virtio_nic_dev);
 static int virtio_nic_setup_virtqueues(virtio_nic_dev_t* virtio_nic_dev);
-// static int virtio_fill_rcvq           (virtio_nic_dev_t* virtio_nic_dev)
+static int virtio_fill_rcvq           (virtio_nic_dev_t* virtio_nic_dev);
 static void virtio_read_mac_addr      (virtio_nic_dev_t* virtio_nic_dev);
 
 static int virtio_nic_alloc_virtqueues(virtio_nic_dev_t* virtio_nic_dev);
 
 static int virtio_nic_check_and_reset (virtio_nic_dev_t* virtio_nic_dev);
 
+static void clear_snd_buffers         (virtio_nic_dev_t* virtio_nic_dev);
+static void reclaim_rcv_buffers       (virtio_nic_dev_t* virtio_nic_dev);
+
 void init_net(void)
 {
-    if (trace_net)
-        cprintf("Net initiaization started. \n");
+    cprintf("Net initiaization started. \n");
 
     virtio_nic_dev_t virtio_nic_dev = { 0 };
 
@@ -65,22 +69,34 @@ void init_net(void)
 
     // TEST
 
-    static const char buf[12] = "Hello world";
+    const char buf[12] = "Hello world";
 
-    buffer_info_t bufi = {.addr = (uint64_t) buf, .flags = 0, .len = 12};
-    virtio_nic_snd_buffer(&virtio_nic_dev, &bufi);
+    buffer_info_t bufi = {.addr = (uint64_t) buf, .flags = BUFFER_INFO_F_COPY, .len = 12};
+    err = virtio_nic_snd_buffer(&virtio_nic_dev, &bufi);
+    if (err != 0)
+    {
+        cprintf("Test virtio_nic_snd_buffer failed. \n");
+    }
 
     // dump_virtqueue(&virtio_nic_dev.virtio_dev.queues[SNDQ]);
+    // dump_virtqueue(&virtio_nic_dev.virtio_dev.queues[RCVQ]);
 
     return;
 }
 
-void virtio_nic_snd_buffer(virtio_nic_dev_t* virtio_nic_dev, const buffer_info_t* buffer_info)
+int virtio_nic_rcv_buffer(virtio_nic_dev_t* virtio_nic_dev, buffer_info_t* buffer_info)
 {
     assert(virtio_nic_dev);
     assert(buffer_info);
+    return 0; // TODO
+}
 
-    static virtio_net_hdr_t net_hdr = { 0 };
+int virtio_nic_snd_buffer(virtio_nic_dev_t* virtio_nic_dev, const buffer_info_t* buffer_info)
+{
+    assert(virtio_nic_dev);
+    assert(buffer_info); // TODO max size
+
+    virtio_net_hdr_t net_hdr = { 0 };
     // TODO work with header
     net_hdr.flags       = VIRTIO_NET_HDR_F_NEEDS_CSUM;
     net_hdr.gso_type    = VIRTIO_NET_HDR_GSO_NONE;
@@ -88,11 +104,11 @@ void virtio_nic_snd_buffer(virtio_nic_dev_t* virtio_nic_dev, const buffer_info_t
     net_hdr.csum_offset = buffer_info->len;
     net_hdr.hdr_len     = 0; 
     net_hdr.gso_size    = 0; 
-    net_hdr.num_buffers = 0;
+    // net_hdr.num_buffers = 0;
 
     buffer_info_t to_send[2] = { 0 };
 
-    to_send[0].flags = 0;
+    to_send[0].flags = BUFFER_INFO_F_COPY;
     to_send[0].addr  = (uint64_t) &net_hdr;
     to_send[0].len   = sizeof(net_hdr);
 
@@ -100,14 +116,16 @@ void virtio_nic_snd_buffer(virtio_nic_dev_t* virtio_nic_dev, const buffer_info_t
     to_send[1].addr  = buffer_info->addr;
     to_send[1].len   = buffer_info->len;
 
-    virtio_snd_buffers((virtio_dev_t*) virtio_nic_dev, SNDQ, to_send, 2);
-    return;
+    return virtio_snd_buffers((virtio_dev_t*) virtio_nic_dev, SNDQ, to_send, 2);
 }
 
 
 void net_irq_handler(void)
 {
     cprintf("NIC HANDLER HELLO! \n");
+
+    // read isr & maybe clear_snd_buffers()? TODO
+
     pic_send_eoi(IRQ_NIC);
     return;
 }
@@ -115,6 +133,9 @@ void net_irq_handler(void)
 static int virtio_nic_dev_init(virtio_nic_dev_t* virtio_nic_dev)
 {
     assert(virtio_nic_dev);
+
+    if (trace_net)
+        cprintf("VirtIO general initialization started. \n");
 
     int err = 0;
 
@@ -136,7 +157,13 @@ static int virtio_nic_dev_init(virtio_nic_dev_t* virtio_nic_dev)
     }
 
     pic_irq_unmask(IRQ_NIC);
+    if (trace_net)
+        cprintf("IRQ_NET unmasked. \n");
 
+    if (trace_net)
+        cprintf("VirtIO nic initialization completed. Sending DRIVER_OK to device. \n");
+
+    Virtio_nic_device = virtio_nic_dev; // assign global variable so handler could use device struct 
     virtio_set_dev_status_flag((virtio_dev_t*) virtio_nic_dev, VIRTIO_PCI_STATUS_DRIVER_OK);    
     return 0;
 }
@@ -155,6 +182,9 @@ static int virtio_nic_dev_reset(virtio_nic_dev_t* virtio_nic_dev)
 
     } while (device_status != 0);
 
+    if (trace_net)
+        cprintf("VirtIO nic device has been reset. \n");
+
     return 0;
 }
 
@@ -162,15 +192,21 @@ static int virtio_nic_check_and_reset(virtio_nic_dev_t* virtio_nic_dev)
 {
     assert(virtio_nic_dev);
 
+    if (trace_net)
+        cprintf("Performing VirtIO device status check. \n");
+
     if (!virtio_check_dev_status_flag((virtio_dev_t*) virtio_nic_dev, VIRTIO_PCI_STATUS_DEVICE_NEEDS_RESET))
+    {
+        if (trace_net)
+            cprintf("VirtIO nic is ok, no need to reset. \n");
+
         return 0; // no reset 
+    }
 
-    int err = 0;
+    if (trace_net)
+        cprintf("VirtIO nic is not OK, resetting. \n");
 
-    err = virtio_nic_dev_reset(virtio_nic_dev);
-    if (err != 0) return err;
-
-    err = virtio_nic_dev_init(virtio_nic_dev);
+    int err = virtio_nic_dev_reset(virtio_nic_dev);
     if (err != 0) return err;
 
     return 1; // reset happened
@@ -179,6 +215,9 @@ static int virtio_nic_check_and_reset(virtio_nic_dev_t* virtio_nic_dev)
 static int virtio_nic_dev_neg_features(virtio_nic_dev_t* virtio_nic_dev)
 {
     assert(virtio_nic_dev);
+
+    if (trace_net)
+        cprintf("VirtIO nic: performing features negotiating. \n");
 
     uint32_t supported_f = virtio_read32((virtio_dev_t*) virtio_nic_dev, VIRTIO_PCI_DEVICE_FEATURES);
     
@@ -254,6 +293,9 @@ static int virtio_nic_setup_virtqueues(virtio_nic_dev_t* virtio_nic_dev)
 {
     assert(virtio_nic_dev); 
 
+    if (trace_net)
+        cprintf("VirtIO nic: performing virtqueues setup. \n");
+
     int err = virtio_nic_alloc_virtqueues(virtio_nic_dev);
     if (err != 0)
     {
@@ -281,7 +323,7 @@ static int virtio_nic_setup_virtqueues(virtio_nic_dev_t* virtio_nic_dev)
             return -1;
         }
 
-        err = virtio_setup_virtqueue(virtio_nic_dev->virtio_dev.queues + iter, size);
+        err = virtio_setup_virtqueue(virtio_nic_dev->virtio_dev.queues + iter, size, SND_MAX_SIZE);
         if (err != 0)
         {
             if (trace_net)
@@ -303,14 +345,36 @@ static int virtio_nic_setup_virtqueues(virtio_nic_dev_t* virtio_nic_dev)
 
     virtio_nic_dev->virtio_dev.queues_n = QUEUE_NUM;
 
+    virtq_used_notif_enable(&(virtio_nic_dev->virtio_dev.queues[SNDQ]));
+    virtq_used_notif_enable(&(virtio_nic_dev->virtio_dev.queues[RCVQ])); // TODO: temporary disable
+
+    if (trace_net)
+        cprintf("VirtIO nic virtqueues setup completed. \n");
+
     return 0;
 }
 
-// static int virtio_fill_rcvq(virtio_nic_dev_t* virtio_nic_dev)
-// {
-//     assert(virtio_nic_dev);
-//     return 0; // TODO
-// }
+static int virtio_fill_rcvq(virtio_nic_dev_t* virtio_nic_dev)
+{
+    assert(virtio_nic_dev);
+
+    char rcv_buffer[RCV_MAX_SIZE] = { 0 };
+    buffer_info_t buffer_info = {.addr  = (uint64_t) rcv_buffer, 
+                                 .flags = BUFFER_INFO_F_COPY | BUFFER_INFO_F_WRITE, 
+                                 .len   = RCV_MAX_SIZE};
+
+    for (unsigned iter = 0; iter < virtio_nic_dev->virtio_dev.queues[RCVQ].vring.num; iter++)
+    {
+        int err = virtio_snd_buffers((virtio_dev_t*) virtio_nic_dev, RCVQ, &buffer_info, 1);
+        if (err != 0)
+        {
+            cprintf("Failed to add free buffers to desct table in RSVQ. \n");
+            return -1;
+        }
+    }
+
+    return 0;
+}
 
 static void virtio_read_mac_addr(virtio_nic_dev_t* virtio_nic_dev)
 {
@@ -336,15 +400,59 @@ static int virtio_nic_setup(virtio_nic_dev_t* virtio_nic_dev)
 {
     assert(virtio_nic_dev);
 
-    int err = 0;
+    if (trace_net)
+        cprintf("VirtIO nic: performing device specific initialization. \n");
 
+    int err = 0;
     virtio_read_mac_addr(virtio_nic_dev);
 
     err = virtio_nic_setup_virtqueues(virtio_nic_dev);
     if (err != 0) return err;
 
-    // err = virtio_fill_rcvq(virtio_nic_dev);
-    // if (err != 0) return err;
+    err = virtio_fill_rcvq(virtio_nic_dev);
+    if (err != 0) return err;
+
+    if (trace_net)
+        cprintf("VirtIO nic: device specific initialization completed. \n");
 
     return 0;
+}
+
+static void clear_snd_buffers(virtio_nic_dev_t* virtio_nic_dev)
+{
+    assert(virtio_nic_dev);
+    virtqueue_t* sndq = &(virtio_nic_dev->virtio_dev.queues[RCVQ]);
+
+    if (trace_net)
+        cprintf("Reclaiming used buffers in sndq. Num_free mow is %d. \n", sndq->num_free);
+
+    while (sndq->last_used != sndq->vring.used->idx)  // TODO
+    {
+        uint16_t index = sndq->last_used % sndq->vring.num;
+
+        vring_used_elem_t* used_elem = &(sndq->vring.used->ring[index]);
+        uint16_t desc_idx = used_elem->index;
+
+        uint16_t chain_len = 1;
+        while (sndq->vring.desc[desc_idx].flags & VIRTQ_DESC_F_NEXT)
+        {
+            chain_len += 1;
+            desc_idx = sndq->vring.desc[desc_idx].next;
+        }
+
+        sndq->num_free += chain_len;
+
+        sndq->last_used += 1;
+    }
+
+    if (trace_net)
+        cprintf("Reclaimed used buffers. Num_free now is %d \n", sndq->num_free);
+
+    return;
+}
+
+static void reclaim_rcv_buffers(virtio_nic_dev_t* virtio_nic_dev)
+{
+    assert(virtio_nic_dev);
+    return; // TODO
 }

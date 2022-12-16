@@ -31,6 +31,11 @@ const static uint16_t Virtio_pci_vendor_id = 0x1AF4;
 #define VIRTIO_PCI_DEVICE_STATUS   0x12  // 1  current state of driver 
 #define VIRTIO_PCI_ISR_STATUS      0x13  // 1  
 
+/* ISR_STATUS Flags - sued to distinguish between device-specific 
+   configuration change interrupts and normal virtqueue interrupts*/
+#define ISR_STATUS_QUEUE_INT       0x1
+#define ISR_STATUS_DEVICE_CONF_INT 0x2
+
 /* The device MUST allow reading of any device-specific configuration field 
  * before FEATURES_OK is set by the driver 
 */
@@ -102,12 +107,17 @@ typedef struct Virtqueue
     vring_t vring;
 
     uint16_t free_index;     // index of first free descriptor
-    // uint16_t num_free;    // count of free descriptors 
+    uint16_t num_free;       // count of free descriptors 
 
     uint16_t last_used;      // last seen used
     uint16_t last_avail;
 
+    uint8_t* copy_buf;
+    uint32_t chunk_size;
+
 } virtqueue_t;
+
+#define MAX_VIRTQUEUE_SIZE 32768
 
 typedef struct Virtio_dev
 {
@@ -142,16 +152,12 @@ void virtio_write32(const virtio_dev_t* virtio_dev, uint32_t offs, uint32_t valu
 void virtio_set_dev_status_flag  (const virtio_dev_t* virtio_dev, uint8_t flag);
 bool virtio_check_dev_status_flag(const virtio_dev_t* virtio_dev, uint8_t flag);
 
-bool virtio_check_dev_feature(const virtio_dev_t* virtio_dev, uint8_t feature);
-void virtio_set_guest_feature(      virtio_dev_t* virtio_dev, uint8_t feature);
-
-int virtio_setup_virtqueue(virtqueue_t* virtqueue, uint16_t size);
+int virtio_setup_virtqueue(virtqueue_t* virtqueue, uint16_t size, size_t chunk_size);
 int virtio_setup_vring(vring_t* vring, uint16_t size);
 
 void dump_virtqueue(const virtqueue_t* virtqueue);
 
-void virtio_snd_buffers(virtio_dev_t* virtio_dev, unsigned qind, const buffer_info_t* buffer_info, unsigned buffers_num);
-// void virtio_rcv_buffer(virtio_dev_t* virtio_dev, unsigned qind, buffer_info_t* buffer_info);
+int virtio_snd_buffers(virtio_dev_t* virtio_dev, unsigned qind, const buffer_info_t* buffer_info, unsigned buffers_num);
 
 #define ALIGN(x, qalign) (((x) + (qalign - 1)) & (~(qalign - 1))) 
 #define QALIGN PAGE_SIZE
@@ -162,20 +168,20 @@ static inline size_t vring_calc_size(uint16_t size)
          + ALIGN(sizeof(uint16_t) * 2 + sizeof(vring_used_elem_t) * size, QALIGN);
 }
 
-static inline void virtq_used_not_disable(virtqueue_t* virtqueue)
+static inline void virtq_used_notif_disable(virtqueue_t* virtqueue)
 {
     assert(virtqueue);
     virtqueue->vring.avail->flags = 1;
 }
 
-static inline void virtq_used_not_enable (virtqueue_t* virtqueue)
+static inline void virtq_used_notif_enable (virtqueue_t* virtqueue)
 {
     assert(virtqueue);
     virtqueue->vring.avail->flags = 0;
 }
 
 // 1 - should not send; 0 - send avail notification
-static inline bool virtq_avail_not_suppressed_check(const virtqueue_t* virtqueue)
+static inline bool virtq_avail_notif_suppressed_check(const virtqueue_t* virtqueue)
 {
     assert(virtqueue);
     return virtqueue->vring.used->flags;

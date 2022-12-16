@@ -12,8 +12,10 @@ static void*  vring_alloc_mem(size_t mem_size);
 static uint16_t virtio_descr_add_buffers(virtqueue_t* virtqueue, const buffer_info_t* buffer_info, 
                                                                              unsigned buffers_num);
 
-void virtio_snd_buffers(virtio_dev_t* virtio_dev, unsigned qind, const buffer_info_t* buffer_info, 
-                                                                             unsigned buffers_num)
+static int virtqueue_allocate_copy_buf(virtqueue_t* virtqueue, size_t chunk_size);
+
+int virtio_snd_buffers(virtio_dev_t* virtio_dev, unsigned qind, const buffer_info_t* buffer_info, 
+                                                                            unsigned buffers_num)
 {
     assert(virtio_dev);
     assert(buffer_info);
@@ -21,9 +23,15 @@ void virtio_snd_buffers(virtio_dev_t* virtio_dev, unsigned qind, const buffer_in
     assert(buffers_num < virtio_dev->queues[qind].vring.num);
 
     if (buffers_num == 0)
-        return;
+        return 0;
 
     virtqueue_t* virtqueue = virtio_dev->queues + qind;
+    if (virtqueue->num_free < buffers_num)
+    {
+        cprintf("Not enough space in descr table. virtio_snd_buffers() failed. \n");
+        return -1;
+    }
+
     uint16_t chain_head = virtio_descr_add_buffers(virtqueue, buffer_info, buffers_num);
     
     uint16_t avail_ind = virtqueue->vring.avail->idx % virtqueue->vring.num;
@@ -34,12 +42,12 @@ void virtio_snd_buffers(virtio_dev_t* virtio_dev, unsigned qind, const buffer_in
     virtqueue->vring.avail->idx += 1;
     mfence();
 
-    if (!virtq_avail_not_suppressed_check(virtqueue))
+    if (!virtq_avail_notif_suppressed_check(virtqueue))
     {
         virtio_write16(virtio_dev, VIRTIO_PCI_QUEUE_NOTIFY, (uint16_t) qind);
     }
 
-    return;
+    return 0;
 }
 
 void dump_virtqueue(const virtqueue_t* virtqueue)
@@ -49,7 +57,7 @@ void dump_virtqueue(const virtqueue_t* virtqueue)
     cprintf("FREE_INDEX: %d LAST_USED: %d LAST_AVAIL: %d \n", virtqueue->free_index,
                                                               virtqueue->last_used,
                                                               virtqueue->last_avail);
-
+    cprintf("NUM_FREE: %d \n", virtqueue->num_free);
     cprintf("VRING.NUM %d \n", virtqueue->vring.num);
 
     cprintf("VRING.DESC: \n");
@@ -59,6 +67,12 @@ void dump_virtqueue(const virtqueue_t* virtqueue)
                                                                                  virtqueue->vring.desc[iter].len,
                                                                                  virtqueue->vring.desc[iter].flags,
                                                                                  virtqueue->vring.desc[iter].next);
+        
+        for (unsigned ind = 0; ind < virtqueue->vring.desc[iter].len; ind++)
+        {
+            cprintf("[%c]", *((char*) (virtqueue->vring.desc[iter].addr) + ind));
+        }
+
         if ((iter % 2) == 0)
             cprintf("\n");
     }
@@ -99,9 +113,22 @@ static uint16_t virtio_descr_add_buffers(virtqueue_t* virtqueue, const buffer_in
         next_descr_free = (descr_free + 1) % virtqueue->vring.num;
         const buffer_info_t* cur_buffer = buffer_info + iter;
 
-        virtqueue->vring.desc[descr_free].len   = cur_buffer->len;
-        virtqueue->vring.desc[descr_free].addr  = cur_buffer->addr;
-        
+        virtqueue->vring.desc[descr_free].len  = cur_buffer->len;
+
+        if (cur_buffer->flags & BUFFER_INFO_F_COPY)
+        {
+            virtqueue->vring.desc[descr_free].addr = (uint64_t) (virtqueue->copy_buf 
+                                                  + descr_free * virtqueue->chunk_size);
+
+            // clear memory before using buffer
+            memset(virtqueue->copy_buf + descr_free * virtqueue->chunk_size, 0, virtqueue->chunk_size);
+
+            memcpy(virtqueue->copy_buf + descr_free * virtqueue->chunk_size, (void*) cur_buffer->addr, 
+                                                                                     cur_buffer->len);
+        }
+        else
+            virtqueue->vring.desc[descr_free].addr = cur_buffer->addr;
+
         if (iter != buffers_num - 1)
             virtqueue->vring.desc[descr_free].flags |= VIRTQ_DESC_F_NEXT;
 
@@ -115,6 +142,8 @@ static uint16_t virtio_descr_add_buffers(virtqueue_t* virtqueue, const buffer_in
     }
 
     virtqueue->free_index = descr_free;
+    virtqueue->num_free -= buffers_num;
+
     return ret_value;
 }
 
@@ -135,7 +164,31 @@ static void* vring_alloc_mem(size_t mem_size)
     return (void*) ((uint64_t) page2pa(allocated_page));
 }
 
-int virtio_setup_virtqueue(virtqueue_t* virtqueue, uint16_t size)
+static int virtqueue_allocate_copy_buf(virtqueue_t* virtqueue, size_t chunk_size)
+{
+    assert(virtqueue);
+
+    virtqueue->chunk_size = chunk_size;
+    size_t copy_buf_size  = chunk_size * virtqueue->vring.num;
+
+    int class = 0;
+
+    for (; class < MAX_CLASS; class++)
+    {
+        if (copy_buf_size < CLASS_SIZE(class))
+            break;
+    }
+
+    struct Page* allocated = alloc_page(class, 0);
+    if (allocated == NULL) return -1;
+    
+    virtqueue->copy_buf = (uint8_t*) page2pa(allocated);
+    memset(virtqueue->copy_buf, 0, copy_buf_size);
+
+    return 0;
+}
+
+int virtio_setup_virtqueue(virtqueue_t* virtqueue, uint16_t size, size_t chunk_size)
 {
     assert(virtqueue);
 
@@ -145,6 +198,10 @@ int virtio_setup_virtqueue(virtqueue_t* virtqueue, uint16_t size)
     virtqueue->free_index = 0;
     virtqueue->last_used  = 0;
     virtqueue->last_avail = 0;
+    virtqueue->num_free   = size;
+
+    err = virtqueue_allocate_copy_buf(virtqueue, chunk_size);
+    if (err != 0) return err;
 
     return 0;
 }

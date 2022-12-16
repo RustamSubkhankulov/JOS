@@ -19,7 +19,8 @@ const static uint16_t Virtio_nic_device_id     = 0x01;   // network card
 /* Receive and send queues */
 #define QUEUE_NUM 2
 
-#define RCV_MAX_SIZE 1526 // size of maximum incoming packet + net header + ethernet header
+#define RCV_MAX_SIZE 2048 // size of maximum incoming packet + net header + ethernet header = 1526
+#define SND_MAX_SIZE 2048
 
 #define MAC_ADDR_NUM 6
 
@@ -54,7 +55,7 @@ typedef struct Virtio_net_hdr
     uint16_t gso_size;                 // maximum segment size (not including header)
     uint16_t csum_start;               // position to begin calculating the checksum
     uint16_t csum_offset;              // position after csum_start to store the checksum
-    uint16_t num_buffers;              // used when merging buffers, only if VIRTIO_NET_F_MRG_RXBUF is negotiated
+    // uint16_t num_buffers;              // used when merging buffers, only if VIRTIO_NET_F_MRG_RXBUF is negotiated
 
 } virtio_net_hdr_t;
 
@@ -104,6 +105,7 @@ typedef struct Virtio_net_hdr
 #define VIRTIO_F_NOTIFICATION_DATA  38
 
 void init_net(void);
-void virtio_nic_snd_buffer(virtio_nic_dev_t* virtio_nic_dev, const buffer_info_t* buffer_info);
+int virtio_nic_snd_buffer(virtio_nic_dev_t* virtio_nic_dev, const buffer_info_t* buffer_info);
+int virtio_nic_rcv_buffer(virtio_nic_dev_t* virtio_nic_dev,       buffer_info_t* buffer_info);
 
 #endif /* !JOS_KERN_NET_H */

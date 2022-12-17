@@ -33,9 +33,13 @@ typedef struct ip_and_port
 } __attribute__((packed)) ip_port_t;
 
 int wrap_in_udp(uint16_t src_port, uint16_t dst_port, 
-                uint16_t len, const void *data,
+                const void *data, uint16_t len,
                 udp_pkt_t  *dst_struct);
 
 uint16_t udp_checksum(const void *src, size_t len);
+
+int make_udp_pkt(ip_port_t src, ip_port_t dst, const void *data, size_t len, ip_pkt_t *dst_struct);
+
+void dump_pkt(ip_pkt_t *pkt);
 
 #endif /* !UDP_H */

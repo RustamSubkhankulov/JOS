@@ -20,6 +20,7 @@
 #include <kern/traceopt.h>
 #include <kern/net.h>
 #include <kern/pci.h>
+#include <kern/udp.h>
 
 void
 timers_init(void) {

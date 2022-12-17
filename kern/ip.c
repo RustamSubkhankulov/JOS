@@ -8,18 +8,16 @@
 #include <kern/udp.h>
 #include <kern/ip.h>
 
-// Wraps arbitrary datum into IPv4 header.
+// Fills IPv4 header
 int
 fill_in_ipv4(
     ip_addr_t   src,
     ip_addr_t   dst,
-    const void *data,
     protocol_t  prot,
     ip_pkt_t   *dst_struct
 )
 {
     assert(dst_struct);
-    assert(data);
 
     ip_hdr_t *hdr = (ip_hdr_t*) dst_struct;
 
@@ -47,6 +45,7 @@ fill_in_ipv4(
     return 0;
 }
 
+// Fill IPv4 header and copy data to struct
 int wrap_in_ipv4(
     ip_addr_t   src,
     ip_addr_t   dst,
@@ -58,7 +57,7 @@ int wrap_in_ipv4(
 {
     assert(len < sizeof(ip_pkt_t) - sizeof(ip_hdr_t));
 
-    fill_in_ipv4(src, dst, data, prot, dst_struct);
+    fill_in_ipv4(src, dst, prot, dst_struct);
 
     memcpy(dst_struct->data, data, len);
 

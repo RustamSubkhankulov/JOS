@@ -38,6 +38,8 @@ KERN_SRCFILES := kern/bootstrap.S \
 			kern/spinlock.c       \
 			kern/net.c 	          \
 			kern/pci.c            \
+			kern/ip.c             \
+			kern/udp.c            \
 			kern/virtio.c
 
 ifeq ($(CONFIG_KSPACE),y)

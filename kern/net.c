@@ -9,6 +9,9 @@
 #include <kern/pmap.h>
 #include <kern/picirq.h>
 
+// TODO: remove
+#include <kern/udp.h>
+
 static virtio_nic_dev_t* Virtio_nic_device = NULL;
 
 static int virtio_nic_dev_init        (virtio_nic_dev_t* virtio_nic_dev);
@@ -69,21 +72,33 @@ void init_net(void)
 
     // TEST
 
-    char buf1[12] = "Hello world";
-    buffer_info_t bufi1 = {.addr = (uint64_t) buf1, .flags = BUFFER_INFO_F_COPY, .len = 11};
+    // Test IPv4 & UDP wrappers
+    ip_pkt_t pkt = {};
+
+    ip_port_t src = { .addr.word = 0xC00002EB, 1234 };
+    ip_port_t dst = { .addr.word = -1, 1337 };
+
+    char tmp_data[] = "DIO_JOJO\n";
+
+    make_udp_pkt(src, dst, tmp_data, sizeof(tmp_data), &pkt);
+
+    dump_pkt(&pkt);
+
+    // char buf1[12] = "Hello world";
+    buffer_info_t bufi1 = {.addr = (uint64_t)&pkt, .flags = BUFFER_INFO_F_COPY, .len = 100};
     err = virtio_nic_snd_buffer(&virtio_nic_dev, &bufi1);
     if (err != 0)
     {
         cprintf("Test virtio_nic_snd_buffer failed. \n");
     }
 
-    char buf2[10] = "Goodb ye.";
-    buffer_info_t bufi2 = {.addr = (uint64_t) buf2, .flags = BUFFER_INFO_F_COPY, .len = 9};
-    err = virtio_nic_snd_buffer(&virtio_nic_dev, &bufi2);
-    if (err != 0)
-    {
-        cprintf("Test virtio_nic_snd_buffer failed. \n");
-    }
+    // char buf2[10] = "Goodb ye.";
+    // buffer_info_t bufi2 = {.addr = (uint64_t) buf2, .flags = BUFFER_INFO_F_COPY, .len = 9};
+    // err = virtio_nic_snd_buffer(&virtio_nic_dev, &bufi2);
+    // if (err != 0)
+    // {
+    //     cprintf("Test virtio_nic_snd_buffer failed. \n");
+    // }
 
     // dump_virtqueue(&virtio_nic_dev.virtio_dev.queues[SNDQ]);
     // dump_virtqueue(&virtio_nic_dev.virtio_dev.queues[RCVQ]);

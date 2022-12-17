@@ -36,23 +36,32 @@ typedef union ip_addr
 
 typedef struct ip_header
 {
-    uint8_t  version     : 4;  // IPv4.version = 4
-    
-    uint8_t  hdr_len     : 4;  // Header length in 32-bit words. 
-                               // Can take values from 5 to 15.
-                               // This particular header is 5 words long.
+    // TODO: check bitfield order
 
-    uint8_t  DSCP        : 5;  // Differentiated Services Code Point
-    uint8_t  ECN         : 2;  // Explicit Congestion Notification
+    struct {
+        uint8_t  hdr_len     : 4;  // Header length in 32-bit words. 
+                                   // Can take values from 5 to 15.
+                                   // This particular header is 5 words long.
+        
+        uint8_t  version     : 4;  // IPv4.version = 4
+    } __attribute__((packed));
+
+    struct {
+        uint8_t  ECN         : 2;  // Explicit Congestion Notification
+        uint8_t  DSCP        : 6;  // Differentiated Services Code Point
+    } __attribute__((packed));
+
     uint16_t pkt_len;          // Includes header and data
     uint16_t identifier;       // Used if pkt is fragmented
     
-    uint8_t  flags       : 3;  // Bit 0 = 0 rsrvd
-                               // Bit 1 = do not fragment
-                               // Bit 2 = has fragments yet to come
+    struct {
+        uint16_t pkt_offset  : 13; // Offset in fragment sequence
+                                   // First pkt in sequence has this field 0.
 
-    uint16_t pkt_offset  : 13; // Offset in fragment sequence
-                               // First pkt in sequence has this field 0.
+        uint8_t  flags       : 3;  // Bit 0 = 0 rsrvd
+                                   // Bit 1 = do not fragment
+                                   // Bit 2 = has fragments yet to come
+    } __attribute__((packed));
 
     uint8_t  ttl;              // Time To Live
 
@@ -72,7 +81,7 @@ typedef struct ip_packet
     uint8_t data[ETHERNET_MTU - sizeof(ip_hdr_t)];
 } __attribute__((packed)) ip_pkt_t;
 
-int fill_in_ipv4(ip_addr_t src, ip_addr_t dst, const void *data,
+int fill_in_ipv4(ip_addr_t src, ip_addr_t dst, 
                  protocol_t prot, ip_pkt_t *dst_struct);
 
 int wrap_in_ipv4(ip_addr_t src, ip_addr_t dst, const void *data,

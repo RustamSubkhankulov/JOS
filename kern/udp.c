@@ -10,13 +10,9 @@
 
 // Wraps arbitrary datum into UDP header.
 int
-wrap_in_udp(
-    uint16_t    src_port,
-    uint16_t    dst_port,
-    const void *data,
-    uint16_t    len,
-    udp_pkt_t  *dst_struct
-)
+wrap_in_udp(uint16_t    src_port, uint16_t dst_port,
+            const void *data,     uint16_t len,
+            udp_pkt_t  *dst_struct)
 {
     assert(dst_struct);
     assert(data);
@@ -102,14 +98,12 @@ void dump_pkt(ip_pkt_t *pkt)
             uint8_t ch = as_str[x + y];
             if (ch == 0) {
                 zero_counter++;
-            }
-            else {
+            } else {
                 if (zero_counter > 1) {
                     cprintf("\n...Skipped %d zeroes...\n", zero_counter);
                     y = x + y;
                     x = 0;
-                }
-                else if (zero_counter == 1) {
+                } else if (zero_counter == 1) {
                     cprintf("[] (0) ");
                 }
 
@@ -117,8 +111,7 @@ void dump_pkt(ip_pkt_t *pkt)
 
                 if (ISALPHA(ch)) {
                     cputchar(ch);
-                }
-                else {
+                } else {
                     cprintf("[%c] (%d) ", ch, ch);
                 }
             }
@@ -130,8 +123,7 @@ void dump_pkt(ip_pkt_t *pkt)
 
     if (zero_counter > 1) {
         cprintf("\n...Skipped %d zeroes... ", zero_counter);
-    }
-    else if (zero_counter == 1) {
+    } else if (zero_counter == 1) {
         cprintf("[] (0) ");
     }
     
@@ -139,4 +131,19 @@ void dump_pkt(ip_pkt_t *pkt)
     cputchar('\n');
 
     return;
+}
+
+ip_port_t make_addr_port(uint32_t ip_addr, uint16_t port)
+{
+    ip_port_t res;
+
+    res.port = port;
+
+    uint32_t inv_addr = bswap32(ip_addr);
+
+    cprintf("addr = 0x%x; inverted addr = 0x%x\n", ip_addr, inv_addr);
+
+    res.addr.word = inv_addr;
+
+    return res;
 }

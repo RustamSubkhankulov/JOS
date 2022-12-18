@@ -13,31 +13,48 @@
 #define IP_HDR_NO_FRGM   (1U << 1U)
 #define IP_HDR_MORE_FRGM (1U << 2U)
 
+#define MASK_16_LOWER ((1U << 16) - 1)
+
+#define BSWAP_16(val)  \
+    ((uint16_t)(((uint16_t)val >> 8) | ((uint16_t)val << 8)))
+
+/*
+ * 1 2   3 4
+ * \ /   \ /
+ * / \   / \
+ * 2 1   4 3
+ * 
+ *    \ /
+ *    / \
+ * 4 3   2 1
+ */
+
 typedef enum Protocol
 {
     UDP  = 17,
 } protocol_t;
 
+// Warning: do not access the structure fields explicitly
+//          if you don't know what you're doing
 typedef union ip_addr
 {
-    // IP addr as 4 octets, i.e. 192.168.1.322.
-    // Order is inverted to represent little-endianness
+    // IP addr as 4 octets, i.e. 192 .168 .001 .322
+    //                           oct0.oct1.oct2.oct3
+    // Order of fields represents big-endianness
     struct {
-        uint8_t oct3;
-        uint8_t oct2;
-        uint8_t oct1;
         uint8_t oct0;
+        uint8_t oct1;
+        uint8_t oct2;
+        uint8_t oct3;
     } __attribute__((packed));
 
     // IP addr as a single 32-bit word
     uint32_t word;
-
 } ip_addr_t;
 
+// Warning: the structure is Big-Endian
 typedef struct ip_header
 {
-    // TODO: check bitfield order
-
     struct {
         uint8_t  hdr_len     : 4;  // Header length in 32-bit words. 
                                    // Can take values from 5 to 15.
@@ -88,5 +105,7 @@ int wrap_in_ipv4(ip_addr_t src, ip_addr_t dst, const void *data,
                  size_t len, protocol_t prot, ip_pkt_t *dst_struct);
 
 uint16_t ip_checksum(const void *src, size_t len);
+
+uint32_t get_ip_addr_word(const ip_addr_t *addr);
 
 #endif /* !IP_H */

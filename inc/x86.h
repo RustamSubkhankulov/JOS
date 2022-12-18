@@ -8,6 +8,12 @@ mfence(void) {
     asm volatile("mfence":::"memory");
 }
 
+static inline uint32_t __attribute__((always_inline))
+bswap32(uint32_t val) {
+    asm volatile("bswap %0" : "=r" (val) : "0" (val));
+    return val;
+}
+
 static inline void __attribute__((always_inline))
 breakpoint(void) {
     asm volatile("int3");

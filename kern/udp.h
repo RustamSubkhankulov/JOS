@@ -42,4 +42,6 @@ int make_udp_pkt(ip_port_t src, ip_port_t dst, const void *data, size_t len, ip_
 
 void dump_pkt(ip_pkt_t *pkt);
 
+ip_port_t make_addr_port(uint32_t ip_addr, uint16_t port);
+
 #endif /* !UDP_H */

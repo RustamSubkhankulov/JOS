@@ -10,12 +10,8 @@
 
 // Fills IPv4 header
 int
-fill_in_ipv4(
-    ip_addr_t   src,
-    ip_addr_t   dst,
-    protocol_t  prot,
-    ip_pkt_t   *dst_struct
-)
+fill_in_ipv4(ip_addr_t  src,  ip_addr_t  dst,
+             protocol_t prot, ip_pkt_t  *dst_struct)
 {
     assert(dst_struct);
 
@@ -29,7 +25,7 @@ fill_in_ipv4(
     hdr->ECN = 0;
 
     // FIXME: should we include only actual data length here?
-    hdr->pkt_len = sizeof(ip_pkt_t);
+    hdr->pkt_len = BSWAP_16(sizeof(ip_pkt_t));
 
     // FIXME: check if 0 when not fragmented
     hdr->identifier = 0;
@@ -46,14 +42,10 @@ fill_in_ipv4(
 }
 
 // Fill IPv4 header and copy data to struct
-int wrap_in_ipv4(
-    ip_addr_t   src,
-    ip_addr_t   dst,
-    const void *data,
-    size_t      len,
-    protocol_t  prot,
-    ip_pkt_t   *dst_struct
-)
+int wrap_in_ipv4(ip_addr_t   src,  ip_addr_t dst,
+                 const void *data, size_t    len,
+                 protocol_t  prot,
+                 ip_pkt_t   *dst_struct)
 {
     assert(len < sizeof(ip_pkt_t) - sizeof(ip_hdr_t));
 
@@ -76,3 +68,7 @@ uint16_t ip_checksum(const void *src, size_t len)
     return 0;
 }
 
+uint32_t get_ip_addr_word(const ip_addr_t *addr)
+{
+    return bswap32(addr->word);
+}

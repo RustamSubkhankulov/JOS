@@ -75,8 +75,8 @@ void init_net(void)
     // Test IPv4 & UDP wrappers
     ip_pkt_t pkt = {};
 
-    ip_port_t src = { .addr.word = 0xC00002EB, 1234 };
-    ip_port_t dst = { .addr.word = -1, 1337 };
+    ip_port_t src = make_addr_port(0, 1488);
+    ip_port_t dst = make_addr_port(0xDEADB00B, 1377);
 
     char tmp_data[] = "DIO_JOJO\n";
 

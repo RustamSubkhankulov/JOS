@@ -25,7 +25,7 @@ static int virtio_nic_alloc_virtqueues(virtio_nic_dev_t* virtio_nic_dev);
 static int virtio_nic_check_and_reset (virtio_nic_dev_t* virtio_nic_dev);
 
 static void clear_snd_buffers         (virtio_nic_dev_t* virtio_nic_dev);
-static void reclaim_rcv_buffers       (virtio_nic_dev_t* virtio_nic_dev);
+// static void reclaim_rcv_buffers       (virtio_nic_dev_t* virtio_nic_dev);
 
 void init_net(void)
 {
@@ -85,66 +85,41 @@ void init_net(void)
         cprintf("Test virtio_nic_snd_buffer failed. \n");
     }
 
+    // char receive[RCV_MAX_SIZE] = { 0 };
+    // buffer_info_t receive_bi = {.addr = (uint64_t) receive, .flags = 0, .len = RCV_MAX_SIZE};
+
+    // cprintf("Waiting for incoming messages (from the stars) \n");
+
+    // int res = 0;
+    // while((res = virtio_nic_rcv_buffer(Virtio_nic_device, &receive_bi)) != 1)
+    // {
+    //     if (res == -1)
+    //         panic("Error occured in receive test. \n");
+    // }
+
+    // cprintf("\n !!! RECEIVED: !!! \n");
+
+    // for (unsigned ind = 0; ind < RCV_MAX_SIZE; ind++)
+    // {
+    //     cprintf("RCV[%u]:0x%x ", ind, ((unsigned char*) receive_bi.addr)[ind]);
+    // }
+
     // dump_virtqueue(&virtio_nic_dev.virtio_dev.queues[SNDQ]);
     // dump_virtqueue(&virtio_nic_dev.virtio_dev.queues[RCVQ]);
 
     return;
 }
 
-int virtio_nic_rcv_buffer(virtio_nic_dev_t* virtio_nic_dev, buffer_info_t* buffer_info)
-{
-    assert(virtio_nic_dev);
-    assert(buffer_info);
-    return 0; // TODO
-}
-
-int virtio_nic_snd_buffer(virtio_nic_dev_t* virtio_nic_dev, const buffer_info_t* buffer_info)
-{
-    assert(virtio_nic_dev);
-    assert(buffer_info); // TODO max size
-
-    clear_snd_buffers(virtio_nic_dev); // TODO: temporary here, until usage of nic in userspace is available
-
-    if (buffer_info->len > SND_MAX_SIZE)
-    {
-        if (trace_net)
-            cprintf("Size of sending buffer is more than possible maximum. Failed. \n");
-        return -1;
-    }
-
-    virtio_net_hdr_t net_hdr = { 0 };
-    // TODO work with header
-    net_hdr.flags       = VIRTIO_NET_HDR_F_NEEDS_CSUM;
-    net_hdr.gso_type    = VIRTIO_NET_HDR_GSO_NONE;
-    net_hdr.csum_start  = 0;
-    net_hdr.csum_offset = buffer_info->len;
-    net_hdr.hdr_len     = 0; 
-    net_hdr.gso_size    = 0; 
-    // net_hdr.num_buffers = 0;
-
-    buffer_info_t to_send[2] = { 0 };
-
-    to_send[0].flags = BUFFER_INFO_F_COPY;
-    to_send[0].addr  = (uint64_t) &net_hdr;
-    to_send[0].len   = sizeof(net_hdr);
-
-    to_send[1].flags = buffer_info->flags;
-    to_send[1].addr  = buffer_info->addr;
-    to_send[1].len   = buffer_info->len;
-
-    return virtio_snd_buffers((virtio_dev_t*) virtio_nic_dev, SNDQ, to_send, 2);
-}
-
 void net_irq_handler(void)
 {
     if (trace_net)
-        cprintf("NIC HANDLER HELLO HELLO BITCHES! \n");
+        cprintf("NIC HANDLER HELLO HELLO! \n");
 
-    uint8_t isr_status = virtio_read8((virtio_dev_t*) Virtio_nic_device, VIRTIO_PCI_ISR_STATUS);
-    if (isr_status & ISR_STATUS_QUEUE_INT)
-    {
-        clear_snd_buffers(Virtio_nic_device);
-    }
+    // uint8_t isr_status = virtio_read8((virtio_dev_t*) Virtio_nic_device, VIRTIO_PCI_ISR_STATUS);
+    // if (isr_status & ISR_STATUS_QUEUE_INT)
+    // {
+    //     clear_snd_buffers(Virtio_nic_device);
+    // }
 
     pic_send_eoi(IRQ_NIC);
     return;
@@ -247,16 +222,16 @@ static int virtio_nic_dev_neg_features(virtio_nic_dev_t* virtio_nic_dev)
     if (trace_net)
         cprintf("Device features: 0x%x \n", supported_f);
 
-    uint32_t requested_f = VIRTIO_NET_F_MAC
-                         | VIRTIO_NET_F_CSUM;
-                        //  | VIRTIO_NET_F_HOST_UFO   // These features may be used in future.  
-                        //  | VIRTIO_NET_F_GUEST_CSUM
-                        //  | VIRTIO_NET_F_GUEST_UFO; // (VIRTIO_F_VERSION_1 is not set - using Legacy Interface)
+    uint32_t requested_f = VIRTIO_NET_F_MAC;
+                        //  | VIRTIO_NET_F_CSUM; // Note: (VIRTIO_F_VERSION_1 is not set - using Legacy Interface)
 
     if (trace_net)
+    {
         cprintf("Guest features (requested): 0x%x \n", requested_f);
+        cprintf("Supported & Requested == 0x%x \n", supported_f & requested_f);
+    }
 
-    if (requested_f != 0 && !(supported_f & requested_f))
+    if (requested_f != 0 && (supported_f & requested_f) != requested_f)
     {
         if (trace_net)
             cprintf("Device does not support requested features. \n");
@@ -268,21 +243,6 @@ static int virtio_nic_dev_neg_features(virtio_nic_dev_t* virtio_nic_dev)
     virtio_nic_dev->virtio_dev.features = supported_f & requested_f;
 
     virtio_write32((virtio_dev_t*) virtio_nic_dev, VIRTIO_PCI_GUEST_FEATURES, requested_f);
-    
-    /* According to specification, these steps below must be omitted.
-       Although, I will leave it here in case we need them later for some reason .*/
-
-    // virtio_set_dev_status_flag((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_STATUS_FEATURES_OK);
-    // bool features_ok = virtio_check_dev_status_flag((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_STATUS_FEATURES_OK);
-    // if (!features_ok)
-    // {
-    //     if (trace_net)
-    //         cprintf("Device does not support requested subset of features and thus it is unusuble. \n");
-    //
-    //     virtio_set_dev_status_flag((pci_dev_general_t*) virtio_nic_dev, VIRTIO_PCI_STATUS_FAILED);
-    //     return -1;
-    // }
-
     return 0;
 }
 
@@ -367,8 +327,8 @@ static int virtio_nic_setup_virtqueues(virtio_nic_dev_t* virtio_nic_dev)
     virtio_nic_dev->virtio_dev.queues_n = QUEUE_NUM;
 
     virtq_used_notif_enable(&(virtio_nic_dev->virtio_dev.queues[SNDQ]));
-    virtq_used_notif_disable(&(virtio_nic_dev->virtio_dev.queues[RCVQ])); // TODO: temporary disable since receive is not supported yet
-                                                                          // Note: disabling ism't strict for device, it can still deliver notification
+    virtq_used_notif_enable(&(virtio_nic_dev->virtio_dev.queues[RCVQ])); // TODO: my be changed in userspace test development process 
+                                                                          // Note: disabling isn't strict for device, it can still deliver notification
 
     if (trace_net)
         cprintf("VirtIO nic virtqueues setup completed. \n");
@@ -472,49 +432,103 @@ static void clear_snd_buffers(virtio_nic_dev_t* virtio_nic_dev)
     return;
 }
 
-static void reclaim_rcv_buffers(virtio_nic_dev_t* virtio_nic_dev)
+// NAME virtio_nic_rcv_buffer() - try to receive data from network card
+// SYNOPSIS: see above
+// DESCRIPTION: virtio_nic_rcv_buffer() tries to receive buffer from VirtIO nic. it checks receive queue
+//              whether new data arrived, and if it is true, it stores data in user specified memory location
+//              Function will return -1 if rcv_buffer.addr is NULL or rcv_buffer.len < RCV_MAX_SIZE
+//              WARNING: On successful receive, fields in rcv_buffer.flags will be updated describing actual flags
+//                       of received data
+// RETURN VALUE: on success, 1 is returned if data is actually arrived and it stored in rcv_buffer,
+//                           0 if there was no new arrived data
+//                           -1 on error
+int virtio_nic_rcv_buffer(virtio_nic_dev_t* virtio_nic_dev, buffer_info_t* rcv_buffer)
 {
     assert(virtio_nic_dev);
+    assert(rcv_buffer);
+
+    if (rcv_buffer->addr == 0 || rcv_buffer->len < RCV_MAX_SIZE)
+    {
+        if (trace_net)
+            cprintf("Insuitable rcv_buffer for incoming packets. \n");
+        return -1;
+    }
+
     virtqueue_t* rcvq = &(virtio_nic_dev->virtio_dev.queues[RCVQ]);
 
+    mfence();
+    if (rcvq->last_used == rcvq->vring.used->idx)
+        return 0; // No new data arrived
+
     if (trace_net)
-        cprintf("Reclaiming used buffers in rcvq. Num_free mow is %d. \n", rcvq->num_free);
+        cprintf("Reclaiming used buffers in rcvq in virtio_nic_rcv_buffer(). Num_free mow is %d. \n", rcvq->num_free);
 
-    while (rcvq->last_used != rcvq->vring.used->idx)
-    {
-        uint16_t index = rcvq->last_used % rcvq->vring.num;
+    uint16_t index = rcvq->last_used % rcvq->vring.num;
+    vring_used_elem_t* used_elem = &(rcvq->vring.used->ring[index]);
+    uint16_t desc_idx = used_elem->index;
 
-        vring_used_elem_t* used_elem = &(rcvq->vring.used->ring[index]);
-        uint16_t desc_idx = used_elem->index;
+    assert(!(rcvq->vring.desc[desc_idx].flags & (VIRTQ_DESC_F_NEXT | VIRTQ_DESC_F_INDIRECT)) 
+         && "RCVQ can not include chained descriptors.");
 
-        
-        buffer_info_t buffer_info = {.addr  =  rcvq->vring.desc[desc_idx].addr,
-                                     .flags = (rcvq->vring.desc[desc_idx].flags & VIRTQ_DESC_F_WRITE)? BUFFER_INFO_F_WRITE: 0, 
-                                     .len   =  rcvq->vring.desc[desc_idx].len};
-        rcvq->num_free += 1;
-        int err = virtio_snd_buffers((virtio_dev_t*) virtio_nic_dev, RCVQ, &buffer_info, 1);
-        if (err != 0)
-            panic("failed to reclaim buffer in rcvq. \n");
+    buffer_info_t buffer_info = {.addr  =  rcvq->vring.desc[desc_idx].addr,
+                                 .flags = (rcvq->vring.desc[desc_idx].flags & VIRTQ_DESC_F_WRITE)? BUFFER_INFO_F_WRITE: 0, 
+                                 .len   =  rcvq->vring.desc[desc_idx].len}; // len value can't be trusted using legacy interface
+    
+    rcv_buffer->flags = buffer_info.flags;
+    memcpy((void*) rcv_buffer->addr, (void*) buffer_info.addr, RCV_MAX_SIZE);
 
-        while (rcvq->vring.desc[desc_idx].flags & VIRTQ_DESC_F_NEXT)
-        {
-            desc_idx = rcvq->vring.desc[desc_idx].next;
+    rcvq->num_free += 1;                        
+    memset((void*) buffer_info.addr, 0, RCV_MAX_SIZE);
+    int err = virtio_snd_buffers((virtio_dev_t*) virtio_nic_dev, RCVQ, &buffer_info, 1);
+    if (err != 0)
+            panic("Failed to reclaim buffer in rcvq. \n");
 
-            buffer_info.addr  =  rcvq->vring.desc[desc_idx].addr;
-            buffer_info.flags = (rcvq->vring.desc[desc_idx].flags & VIRTQ_DESC_F_WRITE)? BUFFER_INFO_F_WRITE: 0;
-            buffer_info.len   =  rcvq->vring.desc[desc_idx].len;
-            rcvq->num_free += 1;
-
-            err = virtio_snd_buffers((virtio_dev_t*) virtio_nic_dev, RCVQ, &buffer_info, 1);
-            if (err != 0)
-                panic("failed to reclaim buffer in rcvq. \n");
-        }
-
-        rcvq->last_used += 1;
-    }
+    rcvq->last_used += 1;
 
     if (trace_net)
         cprintf("Reclaimed used buffers. Num_free now is %d \n", rcvq->num_free);
 
-    return;
+    return 1; // TODO
+}
+
+int virtio_nic_snd_buffer(virtio_nic_dev_t* virtio_nic_dev, const buffer_info_t* buffer_info)
+{
+    assert(virtio_nic_dev);
+    assert(buffer_info); 
+
+    clear_snd_buffers(virtio_nic_dev); // TODO: temporary here, until usage of nic in userspace is available
+
+    if (buffer_info->len > SND_MAX_SIZE)
+    {
+        if (trace_net)
+            cprintf("Size of sending buffer is more than possible maximum. Failed. \n");
+        return -1;
+    }
+
+    virtio_net_hdr_t net_hdr = { 0 };
+    // net_hdr.flags       = VIRTIO_NET_HDR_F_NEEDS_CSUM;
+    // net_hdr.gso_type    = VIRTIO_NET_HDR_GSO_NONE;
+    // net_hdr.csum_start  = 0;
+    // net_hdr.csum_offset = buffer_info->len;
+    // net_hdr.hdr_len     = 0; 
+    // net_hdr.gso_size    = 0; 
+
+    net_hdr.flags       = 0;
+    net_hdr.gso_type    = VIRTIO_NET_HDR_GSO_NONE;
+    net_hdr.csum_start  = 0;
+    net_hdr.csum_offset = 0;
+    net_hdr.hdr_len     = 0; 
+    net_hdr.gso_size    = 0; 
+
+    buffer_info_t to_send[2] = { 0 };
+
+    to_send[0].flags = BUFFER_INFO_F_COPY;
+    to_send[0].addr  = (uint64_t) &net_hdr;
+    to_send[0].len   = sizeof(net_hdr);
+
+    to_send[1].flags = buffer_info->flags;
+    to_send[1].addr  = buffer_info->addr;
+    to_send[1].len   = buffer_info->len;
+
+    return virtio_snd_buffers((virtio_dev_t*) virtio_nic_dev, SNDQ, to_send, 2);
 }

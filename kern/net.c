@@ -216,8 +216,6 @@ static int virtio_nic_dev_neg_features(virtio_nic_dev_t* virtio_nic_dev)
         cprintf("VirtIO nic: performing features negotiating. \n");
 
     uint32_t supported_f = virtio_read32((virtio_dev_t*) virtio_nic_dev, VIRTIO_PCI_DEVICE_FEATURES);
-    
-    assert(supported_f & VIRTIO_F_RING_EVENT_IDX);
 
     if (trace_net)
         cprintf("Device features: 0x%x \n", supported_f);
@@ -263,7 +261,9 @@ static int virtio_nic_alloc_virtqueues(virtio_nic_dev_t* virtio_nic_dev)
     if (allocated == NULL)
         return -1;
 
+    page_ref(allocated);
     void* memory = (void*) ((uint64_t) page2pa(allocated));
+    
     memset(memory, 0, size);
     virtio_nic_dev->virtio_dev.queues = (virtqueue_t*) memory;
 

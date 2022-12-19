@@ -164,6 +164,7 @@ static void* vring_alloc_mem(size_t mem_size)
     if (allocated_page == NULL)
         return NULL;
 
+    page_ref(allocated_page);
     return (void*) ((uint64_t) page2pa(allocated_page));
 }
 
@@ -185,6 +186,7 @@ static int virtqueue_allocate_copy_buf(virtqueue_t* virtqueue, size_t chunk_size
     struct Page* allocated = alloc_page(class, 0);
     if (allocated == NULL) return -1;
     
+    page_ref(allocated);
     virtqueue->copy_buf = (uint8_t*) page2pa(allocated);
     memset(virtqueue->copy_buf, 0, copy_buf_size);
 

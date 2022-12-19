@@ -269,7 +269,7 @@ page_lookup(struct Page *hint, uintptr_t addr, int class, enum PageState type, b
     return node;
 }
 
-static void
+void
 page_ref(struct Page *node) {
     if (!node) return;
     if (!node->refc++) {
@@ -280,7 +280,7 @@ page_ref(struct Page *node) {
     }
 }
 
-static void
+void
 page_unref(struct Page *page) {
     if (!page) return;
     assert_physical(page);

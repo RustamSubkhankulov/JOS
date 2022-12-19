@@ -436,7 +436,7 @@ static void clear_snd_buffers(virtio_nic_dev_t* virtio_nic_dev)
 // SYNOPSIS: see above
 // DESCRIPTION: virtio_nic_rcv_buffer() tries to receive buffer from VirtIO nic. it checks receive queue
 //              whether new data arrived, and if it is true, it stores data in user specified memory location
-//              Function will return -1 if rcv_buffer.addr is NULL or rcv_buffer.len < RCV_MAX_SIZE
+//              Function will return -1 if rcv_buffer.addr is NULL or rcv_buffer.len < RCV_MAX_SIZE - sizeof(virtio_net_hdr_t)
 //              WARNING: On successful receive, fields in rcv_buffer.flags will be updated describing actual flags
 //                       of received data
 // RETURN VALUE: on success, 1 is returned if data is actually arrived and it stored in rcv_buffer,
@@ -447,7 +447,7 @@ int virtio_nic_rcv_buffer(virtio_nic_dev_t* virtio_nic_dev, buffer_info_t* rcv_b
     assert(virtio_nic_dev);
     assert(rcv_buffer);
 
-    if (rcv_buffer->addr == 0 || rcv_buffer->len < RCV_MAX_SIZE)
+    if (rcv_buffer->addr == 0 || rcv_buffer->len < RCV_MAX_SIZE - sizeof(virtio_net_hdr_t))
     {
         if (trace_net)
             cprintf("Insuitable rcv_buffer for incoming packets. \n");
@@ -475,7 +475,8 @@ int virtio_nic_rcv_buffer(virtio_nic_dev_t* virtio_nic_dev, buffer_info_t* rcv_b
                                  .len   =  rcvq->vring.desc[desc_idx].len}; // len value can't be trusted using legacy interface
     
     rcv_buffer->flags = buffer_info.flags;
-    memcpy((void*) rcv_buffer->addr, (void*) buffer_info.addr, RCV_MAX_SIZE);
+    memcpy((void*) rcv_buffer->addr, (void*) buffer_info.addr + sizeof(virtio_net_hdr_t), 
+                                                 RCV_MAX_SIZE - sizeof(virtio_net_hdr_t));
 
     rcvq->num_free += 1;                        
     memset((void*) buffer_info.addr, 0, RCV_MAX_SIZE);

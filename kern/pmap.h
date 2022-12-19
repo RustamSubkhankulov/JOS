@@ -120,11 +120,8 @@ void *mmio_remap_last_region(physaddr_t addr, void *oldva, size_t oldsz, size_t 
 struct Page *
 alloc_page(int class, int flags);
 
-void
-page_ref(struct Page *node);
-
-void
-page_unref(struct Page *page);
+void page_ref(struct Page *node);
+void page_unref(struct Page *page);
 
 extern struct AddressSpace kspace;
 extern struct AddressSpace *current_space;

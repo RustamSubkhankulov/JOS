@@ -10,7 +10,7 @@
 #include <kern/picirq.h>
 
 // TODO: remove
-#include <kern/udp.h>
+#include <kern/ether.h>
 
 static virtio_nic_dev_t* Virtio_nic_device = NULL;
 
@@ -73,19 +73,24 @@ void init_net(void)
     // TEST
 
     // Test IPv4 & UDP wrappers
-    ip_pkt_t pkt = {};
+    eth_pkt_t test_pkt = {};
 
-    ip_port_t src = make_addr_port(0, 1488);
+    ip_addr_t src_addr = {{192, 168, 1, 32}};
+
+    ip_port_t src = make_addr_port(get_ip_addr_word(&src_addr), 1488);
     ip_port_t dst = make_addr_port(0xDEADB00B, 1377);
 
-    char tmp_data[] = "DIO_JOJO\n";
+    mac_addr_t dst_mac = {{0xdc, 0xe9, 0x94, 0x47, 0x83, 0x0b}};
+    mac_addr_t src_mac = {{0xF8, 0x21, 0x22, 0x23, 0x24, 0x25}};
 
-    make_udp_pkt(src, dst, tmp_data, sizeof(tmp_data), &pkt);
+    char tmp_data[] = "DIO_JOJO";
 
-    dump_pkt(&pkt);
+    mk_eth_pkt(src_mac, dst_mac, src, dst, tmp_data, sizeof(tmp_data), &test_pkt);
+
+    dump_pkt((ip_pkt_t*)&(test_pkt.data));
 
     // char buf1[12] = "Hello world";
-    buffer_info_t bufi1 = {.addr = (uint64_t)&pkt, .flags = BUFFER_INFO_F_COPY, .len = 100};
+    buffer_info_t bufi1 = {.addr = (uint64_t)&test_pkt, .flags = BUFFER_INFO_F_COPY, .len = 100};
     err = virtio_nic_snd_buffer(&virtio_nic_dev, &bufi1);
     if (err != 0)
     {

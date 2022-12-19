@@ -5,10 +5,10 @@
 #endif
 
 #include <inc/types.h>
+#include <kern/udp.h>
 
 #define DEFAULT_TTL  64
 #define IP_VERSION   4
-#define ETHERNET_MTU 1500
 
 #define IP_HDR_NO_FRGM   (1U << 1U)
 #define IP_HDR_MORE_FRGM (1U << 2U)
@@ -51,6 +51,12 @@ typedef union ip_addr
     // IP addr as a single 32-bit word
     uint32_t word;
 } ip_addr_t;
+
+typedef struct ip_and_port
+{
+    ip_addr_t addr;
+    uint16_t  port;
+} __attribute__((packed)) ip_port_t;
 
 // Warning: the structure is Big-Endian
 typedef struct ip_header
@@ -98,14 +104,17 @@ typedef struct ip_packet
     uint8_t data[ETHERNET_MTU - sizeof(ip_hdr_t)];
 } __attribute__((packed)) ip_pkt_t;
 
-int fill_in_ipv4(ip_addr_t src, ip_addr_t dst, 
+int fill_ipv4_hdr(ip_addr_t src, ip_addr_t dst, 
                  protocol_t prot, ip_pkt_t *dst_struct);
-
-int wrap_in_ipv4(ip_addr_t src, ip_addr_t dst, const void *data,
-                 size_t len, protocol_t prot, ip_pkt_t *dst_struct);
 
 uint16_t ip_checksum(const void *src, size_t len);
 
+ip_pkt_t *mk_ip_pkt(ip_port_t src, ip_port_t dst, void *data, size_t len, void *buff);
+
 uint32_t get_ip_addr_word(const ip_addr_t *addr);
+
+ip_port_t make_addr_port(uint32_t ip_addr, uint16_t port);
+
+void dump_pkt(ip_pkt_t *pkt);
 
 #endif /* !IP_H */

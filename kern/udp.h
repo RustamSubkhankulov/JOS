@@ -9,6 +9,8 @@
 #define MAX_UDP_PORTS 65536
 #define ETHERNET_MTU 1500
 #define MAX_IP_HDR_SIZE 60
+#define BSWAP_16(val)  \
+    ((uint16_t)(((uint16_t)val >> 8) | ((uint16_t)val << 8)))
 
 typedef struct udp_header
 {
@@ -27,7 +29,7 @@ typedef struct udp_packet
     uint8_t datagram[ETHERNET_MTU - MAX_IP_HDR_SIZE - sizeof(udp_hdr_t)];
 } __attribute__((packed)) udp_pkt_t;
 
-int fill_udp_hdr(uint16_t src_port, uint16_t dst_port, udp_pkt_t *dst_struct);
+int fill_udp_hdr(uint16_t src_port, uint16_t dst_port, uint16_t len, udp_pkt_t *dst_struct);
 
 uint16_t udp_checksum(const void *src, size_t len);
 

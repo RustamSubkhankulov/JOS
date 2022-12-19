@@ -15,9 +15,6 @@
 
 #define MASK_16_LOWER ((1U << 16) - 1)
 
-#define BSWAP_16(val)  \
-    ((uint16_t)(((uint16_t)val >> 8) | ((uint16_t)val << 8)))
-
 /*
  * 1 2   3 4
  * \ /   \ /

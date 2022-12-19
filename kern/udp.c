@@ -8,19 +8,22 @@
 #include <kern/udp.h>
 
 int
-fill_udp_hdr(uint16_t   src_port, 
-            uint16_t   dst_port,
+fill_udp_hdr(uint16_t  src_port, 
+             uint16_t  dst_port,
+             uint16_t  len,
             udp_pkt_t *dst_struct)
 {
     assert(dst_struct);
+    assert(len < ETHERNET_MTU - MAX_IP_HDR_SIZE - sizeof(udp_hdr_t));
 
     udp_hdr_t *hdr = (udp_hdr_t*) dst_struct;
 
-    hdr->src_port = src_port;
-    hdr->dst_port = dst_port;
+    hdr->src_port = BSWAP_16(src_port);
+    hdr->dst_port = BSWAP_16(dst_port);
 
     // FIXME: should we include only actual data length here?
-    hdr->dtg_length = sizeof(udp_pkt_t);
+    len += sizeof(udp_hdr_t);
+    hdr->dtg_length = BSWAP_16(len);
 
     return 0;
 }
@@ -44,7 +47,7 @@ udp_pkt_t *mk_udp_pkt(
 
     udp_pkt_t *pkt = (udp_pkt_t *)buff;
 
-    fill_udp_hdr(src_port, dst_port, pkt);
+    fill_udp_hdr(src_port, dst_port, len, pkt);
 
     memcpy(pkt->datagram, data, len);
 

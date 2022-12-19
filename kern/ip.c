@@ -28,7 +28,7 @@ fill_ipv4_hdr(ip_addr_t  src,  ip_addr_t  dst,
     // FIXME: check if 0 when not fragmented
     hdr->identifier = 0;
 
-    hdr->flags      = IP_HDR_NO_FRGM;
+    hdr->flags      = 0;
     hdr->pkt_offset = 0;
     hdr->ttl        = DEFAULT_TTL;
     hdr->protocol   = prot;
@@ -138,7 +138,7 @@ void dump_pkt(ip_pkt_t *pkt)
     for(int y = 0; y < pkt_len; y += 10) {
         for (int x = 0; x < 10 && x + y < pkt_len; x++) {
             uint8_t ch = as_str[x + y];
-            if (ch == 0) {
+            if (0) {
                 zero_counter++;
             } else {
                 if (zero_counter > 1) {
@@ -154,7 +154,7 @@ void dump_pkt(ip_pkt_t *pkt)
                 if (ISALPHA(ch)) {
                     cputchar(ch);
                 } else {
-                    cprintf("[%c] (0x%x) ", ch, ch);
+                    cprintf("0x%x ", ch);
                 }
             }
         }

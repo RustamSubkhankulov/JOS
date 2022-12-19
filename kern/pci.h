@@ -69,12 +69,7 @@ typedef struct PCI_dev_general
 {
     pci_dev_t pci_dev;
 
-    uint32_t BAR0;
-    uint32_t BAR1;
-    uint32_t BAR2;
-    uint32_t BAR3;
-    uint32_t BAR4;
-    uint32_t BAR5;
+    uint32_t BAR[6];
 
     uint32_t cardbus_cis_ptr;
 

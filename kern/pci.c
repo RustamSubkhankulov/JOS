@@ -8,16 +8,16 @@
 
 void init_pci(void)
 {
-    if (trace_pci)
-        cprintf("PCI initialization started. \n");
+    // if (trace_pci)
+    //     cprintf("PCI initialization started. \n");
 
-    int count = enumerate_pci_devices();
+    // int count = enumerate_pci_devices();
 
-    if (trace_pci)
-        cprintf("Enumerating PCI devices. Total count=%d \n", count);
+    // if (trace_pci)
+    //     cprintf("Enumerating PCI devices. Total count=%d \n", count);
 
-    if (trace_pci)
-        cprintf("PCI initialization successfully finished. \n");
+    // if (trace_pci)
+    //     cprintf("PCI initialization successfully finished. \n");
 
     return; 
 }
@@ -52,12 +52,12 @@ void dump_pci_dev_general(const pci_dev_general_t* pci_dev_general)
     dump_pci_dev(pci_dev);
 
     cprintf("BAR0 0x%04x BAR1 0x%04x BAR2 0x%04x BAR3 0x%04x BAR4 0x%04x BAR5 0x%04x\n", 
-                                                                  pci_dev_general->BAR0,
-                                                                  pci_dev_general->BAR1,
-                                                                  pci_dev_general->BAR2,
-                                                                  pci_dev_general->BAR3,
-                                                                  pci_dev_general->BAR4,
-                                                                  pci_dev_general->BAR5);
+                                                                  pci_dev_general->BAR[0],
+                                                                  pci_dev_general->BAR[1],
+                                                                  pci_dev_general->BAR[2],
+                                                                  pci_dev_general->BAR[3],
+                                                                  pci_dev_general->BAR[4],
+                                                                  pci_dev_general->BAR[5]);
 
     cprintf("CARDBUS_CIS_PTR 0x%04x \n", pci_dev_general->cardbus_cis_ptr);
 
@@ -193,12 +193,12 @@ int pci_dev_general_read_header(pci_dev_general_t* pci_dev_general)
     if (pci_dev_read_header(pci_dev) == -1)
         return -1;
     
-    pci_dev_general->BAR0 = pci_config_read32(pci_dev, PCI_CONF_SPACE_TYPE_0_BAR0); 
-    pci_dev_general->BAR1 = pci_config_read32(pci_dev, PCI_CONF_SPACE_TYPE_0_BAR1);
-    pci_dev_general->BAR2 = pci_config_read32(pci_dev, PCI_CONF_SPACE_TYPE_0_BAR2);
-    pci_dev_general->BAR3 = pci_config_read32(pci_dev, PCI_CONF_SPACE_TYPE_0_BAR3);
-    pci_dev_general->BAR4 = pci_config_read32(pci_dev, PCI_CONF_SPACE_TYPE_0_BAR4);
-    pci_dev_general->BAR5 = pci_config_read32(pci_dev, PCI_CONF_SPACE_TYPE_0_BAR5);
+    pci_dev_general->BAR[0] = pci_config_read32(pci_dev, PCI_CONF_SPACE_TYPE_0_BAR0); 
+    pci_dev_general->BAR[1] = pci_config_read32(pci_dev, PCI_CONF_SPACE_TYPE_0_BAR1);
+    pci_dev_general->BAR[2] = pci_config_read32(pci_dev, PCI_CONF_SPACE_TYPE_0_BAR2);
+    pci_dev_general->BAR[3] = pci_config_read32(pci_dev, PCI_CONF_SPACE_TYPE_0_BAR3);
+    pci_dev_general->BAR[4] = pci_config_read32(pci_dev, PCI_CONF_SPACE_TYPE_0_BAR4);
+    pci_dev_general->BAR[5] = pci_config_read32(pci_dev, PCI_CONF_SPACE_TYPE_0_BAR5);
 
     pci_dev_general->cardbus_cis_ptr = pci_config_read32(pci_dev, PCI_CONF_SPACE_TYPE_0_CARDBUS_CIS);
     

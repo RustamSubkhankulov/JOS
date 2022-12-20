@@ -7,11 +7,12 @@
 #include <kern/traceopt.h>
 #include <kern/udp.h>
 
+// Warning: send port arguments in little endian
 int
 fill_udp_hdr(uint16_t  src_port, 
              uint16_t  dst_port,
              uint16_t  len,
-            udp_pkt_t *dst_struct)
+             udp_pkt_t *dst_struct)
 {
     assert(dst_struct);
     assert(len < ETHERNET_MTU - MAX_IP_HDR_SIZE - sizeof(udp_hdr_t));

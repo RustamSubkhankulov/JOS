@@ -225,6 +225,8 @@ QEMUOPTS += -bios $(OVMF_FIRMWARE)
 
 QEMUITASKOPTS = -nic socket,mcast=230.0.0.1:1234,model=virtio-net-pci
 
+QEMUITAPOPTS = -nic tap,model=virtio-net-pci,ifname=tap0,script=no,downscript=no,mac=52:54:00:01:02:03
+
 define POST_CHECKOUT
 #!/bin/sh -x
 make clean
@@ -324,6 +326,29 @@ qemu-nox-gdb-itask: $(IMAGES) pre-qemu
 	@echo "*** Now run 'gdb'." 1>&2
 	@echo "***"
 	$(QEMU) -display none $(QEMUOPTS) $(QEMUITASKOPTS) -S
+
+# ----------
+
+qemu-tap: $(IMAGES) pre-qemu
+	$(QEMU) $(QEMUOPTS) $(QEMUITAPOPTS)
+
+qemu-tap-nox: $(IMAGES) pre-qemu
+	@echo "***"
+	@echo "*** Use Ctrl-a x to exit qemu"
+	@echo "***"
+	$(QEMU) -display none $(QEMUOPTS) $(QEMUITAPOPTS)
+
+qemu-tap-gdb: $(IMAGES) pre-qemu
+	@echo "***"
+	@echo "*** Now run 'gdb'." 1>&2
+	@echo "***"
+	$(QEMU) $(QEMUOPTS) $(QEMUITAPOPTS) -S
+
+qemu-tap-nox-gdb: $(IMAGES) pre-qemu
+	@echo "***"
+	@echo "*** Now run 'gdb'." 1>&2
+	@echo "***"
+	$(QEMU) -display none $(QEMUOPTS) $(QEMUITAPOPTS) -S
 
 #------------------
 

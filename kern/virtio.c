@@ -165,6 +165,7 @@ static void* vring_alloc_mem(size_t mem_size)
         return NULL;
 
     page_ref(allocated_page);
+
     return (void*) ((uint64_t) page2pa(allocated_page));
 }
 

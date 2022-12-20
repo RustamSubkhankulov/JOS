@@ -52,3 +52,56 @@ eth_pkt_t *mk_eth_pkt(
 
     return buff;
 }
+
+void dump_eth_pkt(eth_pkt_t *pkt)
+{
+    cprintf("Start of ETH dump --------------\n");
+
+    eth_hdr_t *hdr = (eth_hdr_t *)pkt;
+
+    cprintf(
+        "dst MAC = %02x:%02x:%02x:%02x:%02x:%02x\n"
+        "src MAC = %02x:%02x:%02x:%02x:%02x:%02x\n"
+        "type = %d\n"
+        "Raw payload:\n",
+        hdr->dst.octants[0],
+        hdr->dst.octants[1],
+        hdr->dst.octants[2],
+        hdr->dst.octants[3],
+        hdr->dst.octants[4],
+        hdr->dst.octants[5],
+        
+        hdr->src.octants[0],
+        hdr->src.octants[1],
+        hdr->src.octants[2],
+        hdr->src.octants[3],
+        hdr->src.octants[4],
+        hdr->src.octants[5],
+        
+        hdr->type
+    );
+
+    uint8_t *as_char = (uint8_t *)pkt;
+
+    for (size_t byte = 0; byte < 100; byte += 10)
+    {
+        cputchar('\t');
+        for (int i = 0; i < 10; i++)
+        {
+            unsigned char ch = as_char[byte + i];
+
+            if (ISALPHA(ch))
+            {
+                cputchar(ch);
+                cputchar('\t');
+            }
+            else
+            {
+                cprintf("0x%02x\t", ch);
+            }
+        }
+        cputchar('\n');
+    }
+
+    cprintf("End of ETH dump --------------\n");
+}

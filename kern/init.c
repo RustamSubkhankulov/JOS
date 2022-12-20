@@ -151,20 +151,6 @@ i386_init(void) {
     init_pci();
     init_net();
 
-    while(1)
-    {
-        virtio_nic_dev_t jojo = {};
-
-        buffer_info_t buf = {};
-
-        uint8_t data_buff[4096] = {};
-
-        buf.addr = (uintptr_t)&data_buff;
-        buf.len = 4096;
-
-        virtio_nic_rcv_buffer(&jojo, &buf);
-    }
-
     pic_init();
     timers_init();
 

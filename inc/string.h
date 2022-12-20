@@ -3,6 +3,8 @@
 
 #include <inc/types.h>
 
+#define ISALPHA(ch) ((ch > 'a' && ch < 'z') || (ch > 'A' && ch < 'Z'))
+
 size_t strlen(const char *s);
 size_t strnlen(const char *s, size_t size);
 char *strcpy(char *dst, const char *src);

@@ -37,4 +37,6 @@ eth_pkt_t *mk_eth_pkt(mac_addr_t src_mac, mac_addr_t dst_mac,
                       ip_port_t src_ip,   ip_port_t dst_ip, 
                       void *data, size_t len, void *buff);
 
+void dump_eth_pkt(eth_pkt_t *pkt);
+
 #endif /* !ETHER_H */

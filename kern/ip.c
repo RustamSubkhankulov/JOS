@@ -77,24 +77,7 @@ uint16_t get_ip_pkt_len(const ip_pkt_t *pkt)
     return BSWAP_16(pkt->hdr.pkt_len);
 }
 
-ip_port_t make_addr_port(uint32_t ip_addr, uint16_t port)
-{
-    ip_port_t res;
-
-    res.port = port;
-
-    uint32_t inv_addr = bswap32(ip_addr);
-
-    cprintf("addr = 0x%x; inverted addr = 0x%x\n", ip_addr, inv_addr);
-
-    res.addr.word = inv_addr;
-
-    return res;
-}
-
 // --------- < Dump > ----------
-
-#define ISALPHA(ch) ((ch > 'a' && ch < 'z') || (ch > 'A' && ch < 'Z'))
 
 void dump_pkt(ip_pkt_t *pkt)
 {
@@ -105,8 +88,8 @@ void dump_pkt(ip_pkt_t *pkt)
 
     cprintf(
         "\nIPv4 pkt at <%p>:\n"
-        "\tsrc = %03d.%03d.%03d.%03d:%04d\n"
-        "\tdst = %03d.%03d.%03d.%03d:%04d\n"
+        "\tsrc = %d.%d.%d.%d:%d\n"
+        "\tdst = %d.%d.%d.%d:%d\n"
         "\tttl = %d\n"
         "\tprotocol = %d\n"
         "\tlen = %d\n"
@@ -117,13 +100,13 @@ void dump_pkt(ip_pkt_t *pkt)
         ip_hdr->src_ip.oct1,
         ip_hdr->src_ip.oct2,
         ip_hdr->src_ip.oct3,
-        udp_hdr->src_port,
+        BSWAP_16(udp_hdr->src_port),
 
         ip_hdr->dst_ip.oct0,
         ip_hdr->dst_ip.oct1,
         ip_hdr->dst_ip.oct2,
         ip_hdr->dst_ip.oct3,
-        udp_hdr->dst_port,
+        BSWAP_16(udp_hdr->dst_port),
 
         ip_hdr->ttl,
         ip_hdr->protocol,
@@ -135,9 +118,11 @@ void dump_pkt(ip_pkt_t *pkt)
 
     int zero_counter = 0;
 
-    for(int y = 0; y < pkt_len; y += 10) {
-        for (int x = 0; x < 10 && x + y < pkt_len; x++) {
+    for(int y = 0; y < 200; y += 10) {
+        for (int x = 0; x < 10 && x + y < 200; x++) {
             uint8_t ch = as_str[x + y];
+            cputchar('\t');
+
             if (0) {
                 zero_counter++;
             } else {
@@ -154,7 +139,7 @@ void dump_pkt(ip_pkt_t *pkt)
                 if (ISALPHA(ch)) {
                     cputchar(ch);
                 } else {
-                    cprintf("0x%x ", ch);
+                    cprintf("0x%02x", ch);
                 }
             }
         }
@@ -174,5 +159,4 @@ void dump_pkt(ip_pkt_t *pkt)
 
     return;
 }
-#undef ISALPHA
 

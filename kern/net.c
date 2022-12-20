@@ -9,6 +9,8 @@
 #include <kern/pmap.h>
 #include <kern/picirq.h>
 
+#include <kern/ether.h>
+
 static virtio_nic_dev_t* Virtio_nic_device = NULL;
 
 static int virtio_nic_dev_init        (virtio_nic_dev_t* virtio_nic_dev);
@@ -69,21 +71,44 @@ void init_net(void)
 
     // TEST
 
-    char buf1[12] = "Hello world";
-    buffer_info_t bufi1 = {.addr = (uint64_t) buf1, .flags = BUFFER_INFO_F_COPY, .len = 11};
+    eth_pkt_t test_pkt;
+
+    mac_addr_t src_mac = {{0x12, 0x34, 0x56, 0x78, 0x90, 0x12}};
+    mac_addr_t dst_mac = {{0x42, 0x44, 0x46, 0x48, 0x40, 0x47}};
+
+    ip_port_t dst_ip;
+    dst_ip.addr.oct0 = 192;
+    dst_ip.addr.oct1 = 168;
+    dst_ip.addr.oct2 = 11;
+    dst_ip.addr.oct3 = 1;
+
+    dst_ip.port = 1234;
+
+    cprintf("port = %d\n", dst_ip.port);
+
+    ip_port_t src_ip = {};
+
+    char data[] = "Goodbye, JOJO\n";
+
+    mk_eth_pkt(src_mac, dst_mac, src_ip, dst_ip, &data, sizeof(data), &test_pkt);
+
+    dump_eth_pkt(&test_pkt);
+    dump_pkt((ip_pkt_t *)&test_pkt.data);
+
+    buffer_info_t bufi1 = {.addr = (uint64_t) &test_pkt, .flags = BUFFER_INFO_F_COPY, .len = sizeof(test_pkt)};
     err = virtio_nic_snd_buffer(&virtio_nic_dev, &bufi1);
     if (err != 0)
     {
         cprintf("Test virtio_nic_snd_buffer failed. \n");
     }
 
-    char buf2[10] = "Goodb ye.";
-    buffer_info_t bufi2 = {.addr = (uint64_t) buf2, .flags = BUFFER_INFO_F_COPY, .len = 9};
-    err = virtio_nic_snd_buffer(&virtio_nic_dev, &bufi2);
-    if (err != 0)
-    {
-        cprintf("Test virtio_nic_snd_buffer failed. \n");
-    }
+    // char buf2[10] = "Goodb ye.";
+    // buffer_info_t bufi2 = {.addr = (uint64_t) buf2, .flags = BUFFER_INFO_F_COPY, .len = 9};
+    // err = virtio_nic_snd_buffer(&virtio_nic_dev, &bufi2);
+    // if (err != 0)
+    // {
+    //     cprintf("Test virtio_nic_snd_buffer failed. \n");
+    // }
 
     // char receive[RCV_MAX_SIZE] = { 0 };
     // buffer_info_t receive_bi = {.addr = (uint64_t) receive, .flags = 0, .len = RCV_MAX_SIZE};
@@ -106,6 +131,36 @@ void init_net(void)
 
     // dump_virtqueue(&virtio_nic_dev.virtio_dev.queues[SNDQ]);
     // dump_virtqueue(&virtio_nic_dev.virtio_dev.queues[RCVQ]);
+    uint8_t data_buff[4096] = {};
+
+    while(1)
+    {
+        cprintf("Listening...\n");
+
+        while(1)
+        {
+            buffer_info_t buf = {};
+
+            buf.addr = (uintptr_t)&data_buff;
+            buf.len = 4096;
+
+            if (virtio_nic_rcv_buffer(Virtio_nic_device, &buf) == 1) break;
+            // cputchar('N');
+        }
+
+        cprintf("Recieved!\n");
+
+        dump_eth_pkt((eth_pkt_t *)data_buff);
+        dump_pkt((ip_pkt_t*)((eth_pkt_t*)data_buff)->data);
+    }
+
+    cprintf("Stopped listening!\n");
+
+    while(1)
+    {
+        // cprintf("%s\n", data_buff);
+        // cputchar('A');
+    }
 
     return;
 }
@@ -368,12 +423,15 @@ static void virtio_read_mac_addr(virtio_nic_dev_t* virtio_nic_dev)
     }
 
     if (trace_net)
-        cprintf("MAC address: %d.%d.%d.%d.%d.%d \n", virtio_nic_dev->MAC[0], 
-                                                     virtio_nic_dev->MAC[1],
-                                                     virtio_nic_dev->MAC[2],
-                                                     virtio_nic_dev->MAC[3],
-                                                     virtio_nic_dev->MAC[4],
-                                                     virtio_nic_dev->MAC[5]);
+        cprintf(
+            "MAC address: %02x:%02x:%02x:%02x:%02x:%02x\n",
+            virtio_nic_dev->MAC[0], 
+            virtio_nic_dev->MAC[1],
+            virtio_nic_dev->MAC[2],
+            virtio_nic_dev->MAC[3],
+            virtio_nic_dev->MAC[4],
+            virtio_nic_dev->MAC[5]
+        );
 
     return;
 }
@@ -444,6 +502,8 @@ static void clear_snd_buffers(virtio_nic_dev_t* virtio_nic_dev)
 //                           -1 on error
 int virtio_nic_rcv_buffer(virtio_nic_dev_t* virtio_nic_dev, buffer_info_t* rcv_buffer)
 {
+    virtio_nic_dev = Virtio_nic_device;
+
     assert(virtio_nic_dev);
     assert(rcv_buffer);
 

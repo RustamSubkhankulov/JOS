@@ -28,6 +28,7 @@
 
 typedef enum Protocol
 {
+    ICMP = 1,
     UDP  = 17,
 } protocol_t;
 

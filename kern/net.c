@@ -155,37 +155,7 @@ void init_net(void)
         if (is_arp_req((arp_pkt_t *)data_buff)) {
             cprintf("ARP Request!\n");
 
-            arp_pkt_t responce = *(arp_pkt_t *)data_buff;
-            
-            // Change sender and target vice versa
-            responce.tha = responce.sha;
-
-            ip_addr_t sender = responce.tpa;
-
-            cprintf("sender = ");
-            print_ip_addr(&sender);
-            cprintf("\n"); 
-
-            responce.tpa = responce.spa;
-
-            cprintf("dest = ");
-            print_ip_addr(&responce.tpa);
-            cprintf("\n");
-
-            responce.spa = sender;
-
-            // Fill in our own MAC
-            responce.sha = src_mac;
-
-            // We now send a responce operation
-            responce.oper = BSWAP_16(ARP_OPER_RESP);
-
-            responce.hdr.src = src_mac;
-            responce.hdr.dst = responce.tha;
-            
-            dump_eth_pkt((eth_pkt_t *)&responce);
-
-            dump_arp_pkt(&responce);
+            arp_pkt_t responce = mk_arp_responce((arp_pkt_t *)data_buff, &src_mac);
 
             buffer_info_t bufi1 = {.addr = (uint64_t) &responce, .flags = BUFFER_INFO_F_COPY, .len = sizeof(arp_pkt_t) + 2};
             err = virtio_nic_snd_buffer(&virtio_nic_dev, &bufi1);
@@ -194,6 +164,9 @@ void init_net(void)
                 cprintf("Send ARP responce failed\n");
             }
         } else {
+            // TODO: ICMP responce
+            //       wrap it into Ethernet before sending
+
             // dump_pkt((ip_pkt_t*)((eth_pkt_t*)data_buff)->data);
         }
     }

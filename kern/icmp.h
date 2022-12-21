@@ -7,8 +7,11 @@
 #include <inc/types.h>
 #include <kern/ether.h>
 
-#define ICMP_ECHO_REQ  0x8
-#define ICMP_ECHO_REPL 0x0
+enum ICMP_type
+{
+    ECHO_REQ  = 0x8,
+    ECHO_REPL = 0x0,
+};
 
 typedef struct icmp_pkt
 {
@@ -18,9 +21,12 @@ typedef struct icmp_pkt
     uint16_t checksum;
     uint16_t identifier;
     uint16_t seq_number;
+    uint8_t data[ETHERNET_MTU - sizeof(ip_hdr_t)];
 } __attribute__ ((packed)) icmp_pkt_t;
 
 int is_icmp_req(const icmp_pkt_t *pkt);
+
+eth_pkt_t mk_icmp_response(const eth_pkt_t *pkt);
 
 void dump_icmp_pkt(icmp_pkt_t *pkt);
 

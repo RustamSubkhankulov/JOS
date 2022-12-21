@@ -57,29 +57,29 @@ void dump_arp_pkt(arp_pkt_t *pkt)
     cprintf("\nDump ARP end --------------\n");
 }
 
-arp_pkt_t mk_arp_responce(const arp_pkt_t *request, const mac_addr_t *src_mac)
+arp_pkt_t mk_arp_response(const arp_pkt_t *request, const mac_addr_t *src_mac)
 {
-    arp_pkt_t responce = *request;
+    arp_pkt_t response = *request;
 
     // Change sender and target vice versa
-    responce.tha = responce.sha;
+    response.tha = response.sha;
 
-    ip_addr_t sender = responce.tpa;
-    responce.tpa = responce.spa;
-    responce.spa = sender;
+    ip_addr_t sender = response.tpa;
+    response.tpa = response.spa;
+    response.spa = sender;
 
     // Fill in our own MAC
-    responce.sha = *src_mac;
+    response.sha = *src_mac;
 
-    // We now send a responce operation
-    responce.oper = BSWAP_16(ARP_OPER_RESP);
+    // We now send a response operation
+    response.oper = BSWAP_16(ARP_OPER_RESP);
 
-    responce.hdr.src = *src_mac;
-    responce.hdr.dst = responce.tha;
+    response.hdr.src = *src_mac;
+    response.hdr.dst = response.tha;
     
-    dump_eth_pkt((eth_pkt_t *)&responce);
+    dump_eth_pkt((eth_pkt_t *)&response);
 
-    dump_arp_pkt(&responce);
+    dump_arp_pkt(&response);
 
-    return responce;
+    return response;
 }

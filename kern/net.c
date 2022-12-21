@@ -11,6 +11,7 @@
 
 #include <kern/ether.h>
 #include <kern/arp.h>
+#include <kern/icmp.h>
 
 static virtio_nic_dev_t* Virtio_nic_device = NULL;
 
@@ -137,7 +138,7 @@ void init_net(void)
 
     while(1)
     {
-        cprintf("Listening...\n");
+        cprintf("\nListening...\n");
 
         while(1)
         {
@@ -150,24 +151,43 @@ void init_net(void)
             // cputchar('N');
         }
 
-        cprintf("Recieved!\n");
+        cprintf("\nRecieved!\n");
 
         if (is_arp_req((arp_pkt_t *)data_buff)) {
             cprintf("ARP Request!\n");
 
-            arp_pkt_t responce = mk_arp_responce((arp_pkt_t *)data_buff, &src_mac);
+            arp_pkt_t response = mk_arp_response((arp_pkt_t *)data_buff, &src_mac);
 
-            buffer_info_t bufi1 = {.addr = (uint64_t) &responce, .flags = BUFFER_INFO_F_COPY, .len = sizeof(arp_pkt_t) + 2};
+            buffer_info_t bufi1 = {.addr = (uint64_t) &response, .flags = BUFFER_INFO_F_COPY, .len = sizeof(arp_pkt_t)};
             err = virtio_nic_snd_buffer(&virtio_nic_dev, &bufi1);
             if (err != 0)
             {
-                cprintf("Send ARP responce failed\n");
+                cprintf("Send ARP response failed\n");
             }
         } else {
-            // TODO: ICMP responce
-            //       wrap it into Ethernet before sending
+            eth_pkt_t *pkt = (eth_pkt_t *)data_buff;
 
-            // dump_pkt((ip_pkt_t*)((eth_pkt_t*)data_buff)->data);
+            if(is_icmp_req((icmp_pkt_t *)pkt->data))
+            {
+                cprintf("ICMP Request!\n");
+
+                dump_icmp_pkt((icmp_pkt_t *)pkt->data);
+
+                eth_pkt_t response = mk_icmp_response(pkt);
+
+                // Calculate packet length
+                ip_hdr_t *ip_pkt = (ip_hdr_t *)pkt->data;
+                int pkt_len = BSWAP_16(ip_pkt->pkt_len) + sizeof(eth_hdr_t);
+
+                buffer_info_t bufi1 = {.addr = (uint64_t) &response, .flags = BUFFER_INFO_F_COPY, .len = pkt_len};
+                err = virtio_nic_snd_buffer(&virtio_nic_dev, &bufi1);
+                if (err != 0)
+                {
+                    cprintf("Send ICMP response failed\n");
+                }
+
+                cprintf("Sent ICMP response\n");
+            }
         }
     }
 

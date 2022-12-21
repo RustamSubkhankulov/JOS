@@ -30,6 +30,6 @@ int is_arp_req(const arp_pkt_t *pkt);
 
 void dump_arp_pkt(arp_pkt_t *pkt);
 
-arp_pkt_t mk_arp_responce(const arp_pkt_t *request, const mac_addr_t *src_mac);
+arp_pkt_t mk_arp_response(const arp_pkt_t *request, const mac_addr_t *src_mac);
 
 #endif /* !ARP_H */

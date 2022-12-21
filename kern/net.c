@@ -10,6 +10,7 @@
 #include <kern/picirq.h>
 
 #include <kern/ether.h>
+#include <kern/arp.h>
 
 static virtio_nic_dev_t* Virtio_nic_device = NULL;
 
@@ -71,36 +72,37 @@ void init_net(void)
 
     // TEST
 
-    eth_pkt_t test_pkt;
+    // eth_pkt_t test_pkt;
 
-    mac_addr_t src_mac = {{0x12, 0x34, 0x56, 0x78, 0x90, 0x12}};
-    mac_addr_t dst_mac = {{0x42, 0x44, 0x46, 0x48, 0x40, 0x47}};
+    mac_addr_t src_mac = *(mac_addr_t *)virtio_nic_dev.MAC;
+    
+    // mac_addr_t dst_mac = {{0x42, 0x44, 0x46, 0x48, 0x40, 0x47}};
 
-    ip_port_t dst_ip;
-    dst_ip.addr.oct0 = 192;
-    dst_ip.addr.oct1 = 168;
-    dst_ip.addr.oct2 = 11;
-    dst_ip.addr.oct3 = 1;
+    // ip_port_t dst_ip;
+    // dst_ip.addr.oct0 = 192;
+    // dst_ip.addr.oct1 = 168;
+    // dst_ip.addr.oct2 = 11;
+    // dst_ip.addr.oct3 = 1;
 
-    dst_ip.port = 1234;
+    // dst_ip.port = 1234;
 
-    cprintf("port = %d\n", dst_ip.port);
+    // cprintf("port = %d\n", dst_ip.port);
 
-    ip_port_t src_ip = {};
+    // ip_port_t src_ip = {};
 
-    char data[] = "Goodbye, JOJO\n";
+    // char data[] = "Goodbye, JOJO\n";
 
-    mk_eth_pkt(src_mac, dst_mac, src_ip, dst_ip, &data, sizeof(data), &test_pkt);
+    // mk_eth_pkt(src_mac, dst_mac, src_ip, dst_ip, &data, sizeof(data), &test_pkt);
 
-    dump_eth_pkt(&test_pkt);
-    dump_pkt((ip_pkt_t *)&test_pkt.data);
+    // dump_eth_pkt(&test_pkt);
+    // dump_pkt((ip_pkt_t *)&test_pkt.data);
 
-    buffer_info_t bufi1 = {.addr = (uint64_t) &test_pkt, .flags = BUFFER_INFO_F_COPY, .len = sizeof(test_pkt)};
-    err = virtio_nic_snd_buffer(&virtio_nic_dev, &bufi1);
-    if (err != 0)
-    {
-        cprintf("Test virtio_nic_snd_buffer failed. \n");
-    }
+    // buffer_info_t bufi1 = {.addr = (uint64_t) &test_pkt, .flags = BUFFER_INFO_F_COPY, .len = sizeof(test_pkt)};
+    // err = virtio_nic_snd_buffer(&virtio_nic_dev, &bufi1);
+    // if (err != 0)
+    // {
+    //     cprintf("Test virtio_nic_snd_buffer failed. \n");
+    // }
 
     // char buf2[10] = "Goodb ye.";
     // buffer_info_t bufi2 = {.addr = (uint64_t) buf2, .flags = BUFFER_INFO_F_COPY, .len = 9};
@@ -150,8 +152,50 @@ void init_net(void)
 
         cprintf("Recieved!\n");
 
-        dump_eth_pkt((eth_pkt_t *)data_buff);
-        dump_pkt((ip_pkt_t*)((eth_pkt_t*)data_buff)->data);
+        if (is_arp_req((arp_pkt_t *)data_buff)) {
+            cprintf("ARP Request!\n");
+
+            arp_pkt_t responce = *(arp_pkt_t *)data_buff;
+            
+            // Change sender and target vice versa
+            responce.tha = responce.sha;
+
+            ip_addr_t sender = responce.tpa;
+
+            cprintf("sender = ");
+            print_ip_addr(&sender);
+            cprintf("\n"); 
+
+            responce.tpa = responce.spa;
+
+            cprintf("dest = ");
+            print_ip_addr(&responce.tpa);
+            cprintf("\n");
+
+            responce.spa = sender;
+
+            // Fill in our own MAC
+            responce.sha = src_mac;
+
+            // We now send a responce operation
+            responce.oper = BSWAP_16(ARP_OPER_RESP);
+
+            responce.hdr.src = src_mac;
+            responce.hdr.dst = responce.tha;
+            
+            dump_eth_pkt((eth_pkt_t *)&responce);
+
+            dump_arp_pkt(&responce);
+
+            buffer_info_t bufi1 = {.addr = (uint64_t) &responce, .flags = BUFFER_INFO_F_COPY, .len = sizeof(arp_pkt_t) + 2};
+            err = virtio_nic_snd_buffer(&virtio_nic_dev, &bufi1);
+            if (err != 0)
+            {
+                cprintf("Send ARP responce failed\n");
+            }
+        } else {
+            // dump_pkt((ip_pkt_t*)((eth_pkt_t*)data_buff)->data);
+        }
     }
 
     cprintf("Stopped listening!\n");

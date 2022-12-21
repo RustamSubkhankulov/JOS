@@ -112,6 +112,8 @@ uint32_t get_ip_addr_word(const ip_addr_t *addr);
 
 ip_port_t make_addr_port(uint32_t ip_addr, uint16_t port);
 
-void dump_pkt(ip_pkt_t *pkt);
+void print_ip_addr(void *ip_addr);
+
+void dump_ip_pkt(ip_pkt_t *pkt);
 
 #endif /* !IP_H */

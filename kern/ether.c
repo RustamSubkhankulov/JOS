@@ -53,32 +53,33 @@ eth_pkt_t *mk_eth_pkt(
     return buff;
 }
 
+void print_mac_addr(const mac_addr_t *addr)
+{
+    cprintf(
+        "%02x:%02x:%02x:%02x:%02x:%02x",
+            addr->octants[0],
+            addr->octants[1],
+            addr->octants[2],
+            addr->octants[3],
+            addr->octants[4],
+            addr->octants[5]
+        );
+}
+
 void dump_eth_pkt(eth_pkt_t *pkt)
 {
     cprintf("Start of ETH dump --------------\n");
 
     eth_hdr_t *hdr = (eth_hdr_t *)pkt;
 
-    cprintf(
-        "dst MAC = %02x:%02x:%02x:%02x:%02x:%02x\n"
-        "src MAC = %02x:%02x:%02x:%02x:%02x:%02x\n"
-        "type = %d\n"
-        "Raw payload:\n",
-        hdr->dst.octants[0],
-        hdr->dst.octants[1],
-        hdr->dst.octants[2],
-        hdr->dst.octants[3],
-        hdr->dst.octants[4],
-        hdr->dst.octants[5],
-        
-        hdr->src.octants[0],
-        hdr->src.octants[1],
-        hdr->src.octants[2],
-        hdr->src.octants[3],
-        hdr->src.octants[4],
-        hdr->src.octants[5],
-        
-        hdr->type
+    cprintf("\tdst MAC = ");
+    print_mac_addr(&hdr->dst);
+    cprintf("\n\tsrc MAC = ");
+    print_mac_addr(&hdr->src);
+
+    cprintf("\n\ttype = %x\n"
+            "Raw payload:\n",
+            BSWAP_16(hdr->type)
     );
 
     uint8_t *as_char = (uint8_t *)pkt;

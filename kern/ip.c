@@ -79,39 +79,43 @@ uint16_t get_ip_pkt_len(const ip_pkt_t *pkt)
 
 // --------- < Dump > ----------
 
-void dump_pkt(ip_pkt_t *pkt)
+void print_ip_addr(void *ip_addr)
+{
+    ip_addr_t *addr = (ip_addr_t *)ip_addr;
+
+    cprintf("%d.%d.%d.%d",
+        addr->oct0,
+        addr->oct1,
+        addr->oct2,
+        addr->oct3);
+}
+
+void dump_ip_pkt(ip_pkt_t *pkt)
 {
     ip_hdr_t  *ip_hdr  = (ip_hdr_t *)pkt;
     udp_hdr_t *udp_hdr = (udp_hdr_t *)(pkt->data);
 
     uint16_t pkt_len = get_ip_pkt_len(pkt);
 
-    cprintf(
-        "\nIPv4 pkt at <%p>:\n"
-        "\tsrc = %d.%d.%d.%d:%d\n"
-        "\tdst = %d.%d.%d.%d:%d\n"
-        "\tttl = %d\n"
-        "\tprotocol = %d\n"
-        "\tlen = %d\n"
-        "\tIPv4 checksum = 0x%x\n\n",
-        pkt,
-        
-        ip_hdr->src_ip.oct0,
-        ip_hdr->src_ip.oct1,
-        ip_hdr->src_ip.oct2,
-        ip_hdr->src_ip.oct3,
-        BSWAP_16(udp_hdr->src_port),
+    cprintf("\nIPv4 pkt at <%p>:\n"
+            "\tsrc = ", pkt);
 
-        ip_hdr->dst_ip.oct0,
-        ip_hdr->dst_ip.oct1,
-        ip_hdr->dst_ip.oct2,
-        ip_hdr->dst_ip.oct3,
-        BSWAP_16(udp_hdr->dst_port),
+    print_ip_addr(&ip_hdr->src_ip);
 
-        ip_hdr->ttl,
-        ip_hdr->protocol,
-        pkt_len,
-        ip_hdr->checksum
+    cprintf(":%d\n"
+            "\tdst = ", BSWAP_16(udp_hdr->src_port));
+
+    print_ip_addr(&ip_hdr->dst_ip);
+
+    cprintf(":%d\n"
+            "\tttl = %d\n"
+            "\tprotocol = %d\n"
+            "\tlen = %d\n"
+            "\tIPv4 checksum = 0x%x\n\n",
+            
+            BSWAP_16(udp_hdr->dst_port), ip_hdr->ttl,
+            ip_hdr->protocol, pkt_len,
+            ip_hdr->checksum
     );
 
     uint8_t *as_str = (uint8_t *)pkt;

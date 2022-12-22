@@ -61,7 +61,7 @@
 #endif 
 
 #ifndef trace_net
-#define trace_net 1
+#define trace_net 0
 #endif 
 
 #endif

@@ -29,7 +29,6 @@ static int virtio_nic_alloc_virtqueues(virtio_nic_dev_t* virtio_nic_dev);
 static int virtio_nic_check_and_reset (virtio_nic_dev_t* virtio_nic_dev);
 
 static void clear_snd_buffers         (virtio_nic_dev_t* virtio_nic_dev);
-// static void reclaim_rcv_buffers       (virtio_nic_dev_t* virtio_nic_dev);
 
 void init_net(void)
 {
@@ -73,67 +72,8 @@ void init_net(void)
 
     // TEST
 
-    // eth_pkt_t test_pkt;
-
     mac_addr_t src_mac = *(mac_addr_t *)virtio_nic_dev.MAC;
     
-    // mac_addr_t dst_mac = {{0x42, 0x44, 0x46, 0x48, 0x40, 0x47}};
-
-    // ip_port_t dst_ip;
-    // dst_ip.addr.oct0 = 192;
-    // dst_ip.addr.oct1 = 168;
-    // dst_ip.addr.oct2 = 11;
-    // dst_ip.addr.oct3 = 1;
-
-    // dst_ip.port = 1234;
-
-    // cprintf("port = %d\n", dst_ip.port);
-
-    // ip_port_t src_ip = {};
-
-    // char data[] = "Goodbye, JOJO\n";
-
-    // mk_eth_pkt(src_mac, dst_mac, src_ip, dst_ip, &data, sizeof(data), &test_pkt);
-
-    // dump_eth_pkt(&test_pkt);
-    // dump_pkt((ip_pkt_t *)&test_pkt.data);
-
-    // buffer_info_t bufi1 = {.addr = (uint64_t) &test_pkt, .flags = BUFFER_INFO_F_COPY, .len = sizeof(test_pkt)};
-    // err = virtio_nic_snd_buffer(&virtio_nic_dev, &bufi1);
-    // if (err != 0)
-    // {
-    //     cprintf("Test virtio_nic_snd_buffer failed. \n");
-    // }
-
-    // char buf2[10] = "Goodb ye.";
-    // buffer_info_t bufi2 = {.addr = (uint64_t) buf2, .flags = BUFFER_INFO_F_COPY, .len = 9};
-    // err = virtio_nic_snd_buffer(&virtio_nic_dev, &bufi2);
-    // if (err != 0)
-    // {
-    //     cprintf("Test virtio_nic_snd_buffer failed. \n");
-    // }
-
-    // char receive[RCV_MAX_SIZE] = { 0 };
-    // buffer_info_t receive_bi = {.addr = (uint64_t) receive, .flags = 0, .len = RCV_MAX_SIZE};
-
-    // cprintf("Waiting for incoming messages (from the stars) \n");
-
-    // int res = 0;
-    // while((res = virtio_nic_rcv_buffer(Virtio_nic_device, &receive_bi)) != 1)
-    // {
-    //     if (res == -1)
-    //         panic("Error occured in receive test. \n");
-    // }
-
-    // cprintf("\n !!! RECEIVED: !!! \n");
-
-    // for (unsigned ind = 0; ind < RCV_MAX_SIZE; ind++)
-    // {
-    //     cprintf("RCV[%u]:0x%x ", ind, ((unsigned char*) receive_bi.addr)[ind]);
-    // }
-
-    // dump_virtqueue(&virtio_nic_dev.virtio_dev.queues[SNDQ]);
-    // dump_virtqueue(&virtio_nic_dev.virtio_dev.queues[RCVQ]);
     uint8_t data_buff[4096] = {};
 
     while(1)
@@ -147,11 +87,11 @@ void init_net(void)
             buf.addr = (uintptr_t)&data_buff;
             buf.len = 4096;
 
-            if (virtio_nic_rcv_buffer(Virtio_nic_device, &buf) == 1) break;
+            if (virtio_nic_rcv_buffer(&buf) == 1) break;
             // cputchar('N');
         }
 
-        cprintf("\nRecieved!\n");
+        cprintf("Recieved!\n");
 
         if (is_arp_req((arp_pkt_t *)data_buff)) {
             cprintf("ARP Request!\n");
@@ -159,11 +99,12 @@ void init_net(void)
             arp_pkt_t response = mk_arp_response((arp_pkt_t *)data_buff, &src_mac);
 
             buffer_info_t bufi1 = {.addr = (uint64_t) &response, .flags = BUFFER_INFO_F_COPY, .len = sizeof(arp_pkt_t)};
-            err = virtio_nic_snd_buffer(&virtio_nic_dev, &bufi1);
+            err = virtio_nic_snd_buffer(&bufi1);
             if (err != 0)
             {
                 cprintf("Send ARP response failed\n");
             }
+            cprintf("Sent ARP response\n");
         } else {
             eth_pkt_t *pkt = (eth_pkt_t *)data_buff;
 
@@ -180,23 +121,30 @@ void init_net(void)
                 int pkt_len = BSWAP_16(ip_pkt->pkt_len) + sizeof(eth_hdr_t);
 
                 buffer_info_t bufi1 = {.addr = (uint64_t) &response, .flags = BUFFER_INFO_F_COPY, .len = pkt_len};
-                err = virtio_nic_snd_buffer(&virtio_nic_dev, &bufi1);
+                err = virtio_nic_snd_buffer(&bufi1);
                 if (err != 0)
                 {
                     cprintf("Send ICMP response failed\n");
                 }
 
                 cprintf("Sent ICMP response\n");
+                break;
             }
         }
     }
 
-    cprintf("Stopped listening!\n");
+    cprintf("Listening and dumping...\n");
 
     while(1)
     {
-        // cprintf("%s\n", data_buff);
-        // cputchar('A');
+        buffer_info_t buf = {};
+
+        buf.addr = (uintptr_t)&data_buff;
+        buf.len = 4096;
+
+        while (virtio_nic_rcv_buffer(&buf) != 1) {;}
+
+        dump_eth_pkt((eth_pkt_t *)data_buff);
     }
 
     return;
@@ -207,11 +155,11 @@ void net_irq_handler(void)
     if (trace_net)
         cprintf("NIC HANDLER HELLO HELLO! \n");
 
-    // uint8_t isr_status = virtio_read8((virtio_dev_t*) Virtio_nic_device, VIRTIO_PCI_ISR_STATUS);
-    // if (isr_status & ISR_STATUS_QUEUE_INT)
-    // {
-    //     clear_snd_buffers(Virtio_nic_device);
-    // }
+    uint8_t isr_status = virtio_read8((virtio_dev_t*) Virtio_nic_device, VIRTIO_PCI_ISR_STATUS);
+    if (isr_status & ISR_STATUS_QUEUE_INT)
+    {
+        clear_snd_buffers(Virtio_nic_device);
+    }
 
     pic_send_eoi(IRQ_NIC);
     return;
@@ -537,9 +485,9 @@ static void clear_snd_buffers(virtio_nic_dev_t* virtio_nic_dev)
 // RETURN VALUE: on success, 1 is returned if data is actually arrived and it stored in rcv_buffer,
 //                           0 if there was no new arrived data
 //                           -1 on error
-int virtio_nic_rcv_buffer(virtio_nic_dev_t* virtio_nic_dev, buffer_info_t* rcv_buffer)
+int virtio_nic_rcv_buffer(buffer_info_t* rcv_buffer)
 {
-    virtio_nic_dev = Virtio_nic_device;
+    virtio_nic_dev_t *virtio_nic_dev = Virtio_nic_device;
 
     assert(virtio_nic_dev);
     assert(rcv_buffer);
@@ -589,8 +537,10 @@ int virtio_nic_rcv_buffer(virtio_nic_dev_t* virtio_nic_dev, buffer_info_t* rcv_b
     return 1; // TODO
 }
 
-int virtio_nic_snd_buffer(virtio_nic_dev_t* virtio_nic_dev, const buffer_info_t* buffer_info)
+int virtio_nic_snd_buffer(const buffer_info_t* buffer_info)
 {
+    virtio_nic_dev_t* virtio_nic_dev = Virtio_nic_device;
+    
     assert(virtio_nic_dev);
     assert(buffer_info); 
 
@@ -604,12 +554,6 @@ int virtio_nic_snd_buffer(virtio_nic_dev_t* virtio_nic_dev, const buffer_info_t*
     }
 
     virtio_net_hdr_t net_hdr = { 0 };
-    // net_hdr.flags       = VIRTIO_NET_HDR_F_NEEDS_CSUM;
-    // net_hdr.gso_type    = VIRTIO_NET_HDR_GSO_NONE;
-    // net_hdr.csum_start  = 0;
-    // net_hdr.csum_offset = buffer_info->len;
-    // net_hdr.hdr_len     = 0; 
-    // net_hdr.gso_size    = 0; 
 
     net_hdr.flags       = 0;
     net_hdr.gso_type    = VIRTIO_NET_HDR_GSO_NONE;

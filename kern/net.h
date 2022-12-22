@@ -104,7 +104,7 @@ typedef struct Virtio_net_hdr
 #define VIRTIO_F_NOTIFICATION_DATA  38
 
 void init_net(void);
-int virtio_nic_snd_buffer(virtio_nic_dev_t* virtio_nic_dev, const buffer_info_t* buffer_info);
-int virtio_nic_rcv_buffer(virtio_nic_dev_t* virtio_nic_dev,       buffer_info_t* rcv_buffer);
+int virtio_nic_snd_buffer(const buffer_info_t* buffer_info);
+int virtio_nic_rcv_buffer(      buffer_info_t* rcv_buffer);
 
 #endif /* !JOS_KERN_NET_H */

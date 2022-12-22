@@ -20,7 +20,10 @@
 #include <kern/traceopt.h>
 #include <kern/net.h>
 #include <kern/pci.h>
-#include <kern/udp.h>
+
+#include <kern/ether.h>
+#include <kern/arp.h>
+#include <kern/icmp.h>
 
 void
 timers_init(void) {
@@ -128,6 +131,85 @@ early_boot_pml4_init(void) {
 #endif
 }
 
+static void test_response(void)
+{
+    // TEST
+
+    mac_addr_t src_mac = *(mac_addr_t *)get_mac_addr();
+    
+    uint8_t data_buff[4096] = {};
+
+    while(1)
+    {
+        cprintf("\nListening...\n");
+
+        while(1)
+        {
+            buffer_info_t buf = {};
+
+            buf.addr = (uintptr_t)&data_buff;
+            buf.len = 4096;
+
+            if (virtio_nic_rcv_buffer(&buf) == 1) break;
+        }
+
+        cprintf("Recieved!\n");
+
+        if (is_arp_req((arp_pkt_t *)data_buff)) {
+            cprintf("ARP Request!\n");
+
+            arp_pkt_t response = mk_arp_response((arp_pkt_t *)data_buff, &src_mac);
+
+            buffer_info_t bufi1 = {.addr = (uint64_t) &response, .flags = BUFFER_INFO_F_COPY, .len = sizeof(arp_pkt_t)};
+            int err = virtio_nic_snd_buffer(&bufi1);
+            if (err != 0)
+            {
+                cprintf("Send ARP response failed\n");
+            }
+            cprintf("Sent ARP response\n");
+        } else {
+            eth_pkt_t *pkt = (eth_pkt_t *)data_buff;
+
+            if(is_icmp_req((icmp_pkt_t *)pkt->data))
+            {
+                cprintf("ICMP Request!\n");
+
+                dump_icmp_pkt((icmp_pkt_t *)pkt->data);
+
+                eth_pkt_t response = mk_icmp_response(pkt);
+
+                // Calculate packet length
+                ip_hdr_t *ip_pkt = (ip_hdr_t *)pkt->data;
+                int pkt_len = BSWAP_16(ip_pkt->pkt_len) + sizeof(eth_hdr_t);
+
+                buffer_info_t bufi1 = {.addr = (uint64_t) &response, .flags = BUFFER_INFO_F_COPY, .len = pkt_len};
+                int err = virtio_nic_snd_buffer(&bufi1);
+                if (err != 0)
+                {
+                    cprintf("Send ICMP response failed\n");
+                }
+
+                cprintf("Sent ICMP response\n");
+                break;
+            }
+        }
+    }
+
+    cprintf("Listening and dumping...\n");
+
+    while(1)
+    {
+        buffer_info_t buf = {};
+
+        buf.addr = (uintptr_t)&data_buff;
+        buf.len = 4096;
+
+        while (virtio_nic_rcv_buffer(&buf) != 1) {;}
+
+        dump_eth_pkt((eth_pkt_t *)data_buff);
+    }
+}
+
 void
 i386_init(void) {
 
@@ -150,6 +232,8 @@ i386_init(void) {
     // Initialize PCI devices & net
     init_pci();
     init_net();
+
+    test_response();
 
     pic_init();
     timers_init();

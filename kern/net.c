@@ -9,11 +9,7 @@
 #include <kern/pmap.h>
 #include <kern/picirq.h>
 
-#include <kern/ether.h>
-#include <kern/arp.h>
-#include <kern/icmp.h>
-
-static virtio_nic_dev_t* Virtio_nic_device = NULL;
+static virtio_nic_dev_t Virtio_nic_dev = { 0 };
 
 static int virtio_nic_dev_init        (virtio_nic_dev_t* virtio_nic_dev);
 static int virtio_nic_dev_reset       (virtio_nic_dev_t* virtio_nic_dev);
@@ -34,118 +30,39 @@ void init_net(void)
 {
     cprintf("Net initiaization started. \n");
 
-    virtio_nic_dev_t virtio_nic_dev = { 0 };
-
-    int found = pci_dev_find((pci_dev_t*) (&virtio_nic_dev), 
+    int found = pci_dev_find((pci_dev_t*) (&Virtio_nic_dev), 
                                             Virtio_nic_pci_class, 
                                             Virtio_nic_pci_subclass,
                                             Virtio_pci_vendor_id);
     if (found == -1)
         panic("Virtio NIC was not found. \n");
     
-    int err = pci_dev_general_read_header((pci_dev_general_t*) (&virtio_nic_dev));
+    int err = pci_dev_general_read_header((pci_dev_general_t*) (&Virtio_nic_dev));
     if (err == -1)
         panic("Virtio NIC incorrect bus, dev & func parameters. \n");
 
     if (trace_net)
-        dump_pci_dev_general((pci_dev_general_t*) (&virtio_nic_dev));
+        dump_pci_dev_general((pci_dev_general_t*) (&Virtio_nic_dev));
 
 
     /* Transitional device requirements */
-    if (virtio_nic_dev.virtio_dev.pci_dev_general.pci_dev.device_id   != Virtio_nic_pci_device_id
-     || virtio_nic_dev.virtio_dev.pci_dev_general.pci_dev.revision_id != 0
-     || virtio_nic_dev.virtio_dev.pci_dev_general.subsystem_dev_id    != Virtio_nic_device_id)
+    if (Virtio_nic_dev.virtio_dev.pci_dev_general.pci_dev.device_id   != Virtio_nic_pci_device_id
+     || Virtio_nic_dev.virtio_dev.pci_dev_general.pci_dev.revision_id != 0
+     || Virtio_nic_dev.virtio_dev.pci_dev_general.subsystem_dev_id    != Virtio_nic_device_id)
     {
         cprintf("Error: Network card is not transitional device. \n");
         return;
     }
 
-    err = virtio_nic_dev_reset(&virtio_nic_dev);
+    err = virtio_nic_dev_reset(&Virtio_nic_dev);
     if (err != 0) 
         panic("Error occured during VirtIO NIC reset. Pernel kanic. \n");
 
-    err = virtio_nic_dev_init(&virtio_nic_dev);
+    err = virtio_nic_dev_init(&Virtio_nic_dev);
     if (err != 0)
         panic("Error occured during VirtIO NIC initialization. Pernel kanic. \n");
 
     cprintf("Net initialization successfully finished. \n");
-
-    // TEST
-
-    mac_addr_t src_mac = *(mac_addr_t *)virtio_nic_dev.MAC;
-    
-    uint8_t data_buff[4096] = {};
-
-    while(1)
-    {
-        cprintf("\nListening...\n");
-
-        while(1)
-        {
-            buffer_info_t buf = {};
-
-            buf.addr = (uintptr_t)&data_buff;
-            buf.len = 4096;
-
-            if (virtio_nic_rcv_buffer(&buf) == 1) break;
-            // cputchar('N');
-        }
-
-        cprintf("Recieved!\n");
-
-        if (is_arp_req((arp_pkt_t *)data_buff)) {
-            cprintf("ARP Request!\n");
-
-            arp_pkt_t response = mk_arp_response((arp_pkt_t *)data_buff, &src_mac);
-
-            buffer_info_t bufi1 = {.addr = (uint64_t) &response, .flags = BUFFER_INFO_F_COPY, .len = sizeof(arp_pkt_t)};
-            err = virtio_nic_snd_buffer(&bufi1);
-            if (err != 0)
-            {
-                cprintf("Send ARP response failed\n");
-            }
-            cprintf("Sent ARP response\n");
-        } else {
-            eth_pkt_t *pkt = (eth_pkt_t *)data_buff;
-
-            if(is_icmp_req((icmp_pkt_t *)pkt->data))
-            {
-                cprintf("ICMP Request!\n");
-
-                dump_icmp_pkt((icmp_pkt_t *)pkt->data);
-
-                eth_pkt_t response = mk_icmp_response(pkt);
-
-                // Calculate packet length
-                ip_hdr_t *ip_pkt = (ip_hdr_t *)pkt->data;
-                int pkt_len = BSWAP_16(ip_pkt->pkt_len) + sizeof(eth_hdr_t);
-
-                buffer_info_t bufi1 = {.addr = (uint64_t) &response, .flags = BUFFER_INFO_F_COPY, .len = pkt_len};
-                err = virtio_nic_snd_buffer(&bufi1);
-                if (err != 0)
-                {
-                    cprintf("Send ICMP response failed\n");
-                }
-
-                cprintf("Sent ICMP response\n");
-                break;
-            }
-        }
-    }
-
-    cprintf("Listening and dumping...\n");
-
-    while(1)
-    {
-        buffer_info_t buf = {};
-
-        buf.addr = (uintptr_t)&data_buff;
-        buf.len = 4096;
-
-        while (virtio_nic_rcv_buffer(&buf) != 1) {;}
-
-        dump_eth_pkt((eth_pkt_t *)data_buff);
-    }
 
     return;
 }
@@ -155,10 +72,10 @@ void net_irq_handler(void)
     if (trace_net)
         cprintf("NIC HANDLER HELLO HELLO! \n");
 
-    uint8_t isr_status = virtio_read8((virtio_dev_t*) Virtio_nic_device, VIRTIO_PCI_ISR_STATUS);
+    uint8_t isr_status = virtio_read8((virtio_dev_t*) &Virtio_nic_dev, VIRTIO_PCI_ISR_STATUS);
     if (isr_status & ISR_STATUS_QUEUE_INT)
     {
-        clear_snd_buffers(Virtio_nic_device);
+        clear_snd_buffers(&Virtio_nic_dev);
     }
 
     pic_send_eoi(IRQ_NIC);
@@ -199,7 +116,6 @@ static int virtio_nic_dev_init(virtio_nic_dev_t* virtio_nic_dev)
     if (trace_net)
         cprintf("VirtIO nic initialization completed. Sending DRIVER_OK to device. \n");
 
-    Virtio_nic_device = virtio_nic_dev; // assign global variable so handler could use device struct 
     virtio_set_dev_status_flag((virtio_dev_t*) virtio_nic_dev, VIRTIO_PCI_STATUS_DRIVER_OK);    
     return 0;
 }
@@ -421,6 +337,11 @@ static void virtio_read_mac_addr(virtio_nic_dev_t* virtio_nic_dev)
     return;
 }
 
+uint8_t *get_mac_addr(void)
+{
+    return Virtio_nic_dev.MAC;
+}
+
 static int virtio_nic_setup(virtio_nic_dev_t* virtio_nic_dev)
 {
     assert(virtio_nic_dev);
@@ -487,7 +408,7 @@ static void clear_snd_buffers(virtio_nic_dev_t* virtio_nic_dev)
 //                           -1 on error
 int virtio_nic_rcv_buffer(buffer_info_t* rcv_buffer)
 {
-    virtio_nic_dev_t *virtio_nic_dev = Virtio_nic_device;
+    virtio_nic_dev_t *virtio_nic_dev = &Virtio_nic_dev;
 
     assert(virtio_nic_dev);
     assert(rcv_buffer);
@@ -539,7 +460,7 @@ int virtio_nic_rcv_buffer(buffer_info_t* rcv_buffer)
 
 int virtio_nic_snd_buffer(const buffer_info_t* buffer_info)
 {
-    virtio_nic_dev_t* virtio_nic_dev = Virtio_nic_device;
+    virtio_nic_dev_t* virtio_nic_dev = &Virtio_nic_dev;
     
     assert(virtio_nic_dev);
     assert(buffer_info); 

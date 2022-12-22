@@ -106,5 +106,6 @@ typedef struct Virtio_net_hdr
 void init_net(void);
 int virtio_nic_snd_buffer(const buffer_info_t* buffer_info);
 int virtio_nic_rcv_buffer(      buffer_info_t* rcv_buffer);
+uint8_t *get_mac_addr(void);
 
 #endif /* !JOS_KERN_NET_H */

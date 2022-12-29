@@ -1420,6 +1420,7 @@ detect_memory(void) {
             /* Attach memory described by memory map entry described by start
              * of type type*/
             // LAB 6: Your code here
+            (void)type;
 
 
 

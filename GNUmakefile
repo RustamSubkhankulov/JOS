@@ -239,7 +239,7 @@ endif
 # force a rebuild of the rule that depends on it.
 $(OBJDIR)/.vars.%: FORCE
 	@test -f $@ || touch $@
-	$(V)echo "$($*)" | cmp -s $@ || echo "$($*)" > $@
+	$(V)echo "$($*)" | cmp -s - $@ || echo "$($*)" > $@
 .PRECIOUS: $(OBJDIR)/.vars.%
 .PHONY: FORCE
 

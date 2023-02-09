@@ -29,12 +29,6 @@ if [ "$(uname)" = "Linux" ]; then
   export TOOLCHAINS
 fi
 
-if [ ! -f "mtoc-mac64.sha256" ]; then
-  curl -LO https://github.com/acidanthera/ocbuild/raw/master/external/mtoc-mac64.sha256 || exit 1
-fi
-MTOC_HASH=$(cat mtoc-mac64.sha256)
-export MTOC_HASH
-
 if [ ! -f "efibuild.sh" ]; then
   curl -LO https://raw.githubusercontent.com/acidanthera/ocbuild/master/efibuild.sh || exit 1
 fi

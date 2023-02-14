@@ -18,7 +18,7 @@
 #endif
 
 #ifndef trace_memory_more
-#define trace_memory_more 0
+#define trace_memory_more 1
 #endif
 
 #if LAB == 9 || LAB == 8

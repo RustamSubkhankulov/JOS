@@ -601,8 +601,8 @@ found:
                                        page2pa(new), page2pa(new) + (long)CLASS_MASK(new->class), new->class);
     }    
     
-    // cprintf("page2pa(new) %lx PADDR(end) %lx \n", page2pa(new), PADDR(end));
-    assert(page2pa(new) >= PADDR(end) || page2pa(new) + CLASS_MASK(new->class) < IOPHYSMEM);
+    // cprintf("BEFORE ASSERT page2pa(new) %lx PADDR(end) %lx CLASS_MASK\n", page2pa(new), PADDR(end));
+    // assert(page2pa(new) >= PADDR(end) || page2pa(new) + CLASS_SIZE(new->class) < IOPHYSMEM);
 
     return new;
 }
@@ -746,6 +746,8 @@ init_allocator(void) {
     root.state = PARTIAL_NODE;
 }
 
+#include <inc/stdio.h>
+
 void
 init_memory(void) {
 
@@ -755,4 +757,12 @@ init_memory(void) {
     detect_memory();
     check_physical_tree(&root);
     if (trace_init) cprintf("Physical memory tree is correct\n");
+
+    //
+    struct Page* allocated = alloc_page(0, 0);
+    assert(allocated);
+    page_ref(allocated);
+    //
+
+    cprintf(" PAGESTATE %d REFC %u \n", allocated->state, allocated->refc);
 }

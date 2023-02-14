@@ -1088,7 +1088,7 @@ found:
     }    
     
     // cprintf("page2pa(new) %lx PADDR(end) %lx \n", page2pa(new), PADDR(end));
-    assert(page2pa(new) >= PADDR(end) || page2pa(new) + CLASS_MASK(new->class) < IOPHYSMEM);
+    assert(!(page2pa(new) >= PADDR(end) || page2pa(new) + CLASS_MASK(new->class) < IOPHYSMEM));
 
     return new;
 }

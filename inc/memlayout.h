@@ -39,7 +39,7 @@
  *                     | - - - - - - - - - - - - - - -|                   |
  *                     |      Invalid Memory (*)      | --/--  KERN_STACK_GAP    |
  *                     +------------------------------+                   |
- *    KERN_PF_STACK_TOP      |       CPU0's #PF Stack       | RW/--  KERN_PF_STACK_SIZE |
+ * KERN_PF_STACK_TOP   |       CPU0's #PF Stack       | RW/--  KERN_PF_STACK_SIZE|
  *                     | - - - - - - - - - - - - - - -|                   |
  *                     |      Invalid Memory (*)      | --/--  KERN_STACK_GAP    |
  *                     +------------------------------+                   |

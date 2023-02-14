@@ -400,7 +400,7 @@ page_lookup_virtual(struct Page *node, uintptr_t addr, int class, int alloc) {
 
         if (!*next) {
             if (!alloc) break;
-            if (!node->phy && alloc == LOOKUP_SPLIT) break;
+            if (!node->phy && alloc == LOOKUP_SPLIT) break; // TODO ???
             ensure_free_desc((nclass - class + 1) * 2);
 
             assert(nclass);
@@ -511,7 +511,7 @@ unmap_page_remove(struct Page *node) {
     free_descriptor(node);
 }
 
-static void
+static void // TODO ??? 
 remove_pt(pte_t *pt, pte_t base, size_t step, uintptr_t i0, uintptr_t i1) {
     assert(step == 1 * GB || step == 2 * MB || step == 4 * KB || step == 512 * GB);
     for (size_t i = i0; i < i1; i++) {
@@ -815,7 +815,7 @@ unmap_page(struct AddressSpace *spc, uintptr_t addr, int class) {
     assert(!(addr & CLASS_MASK(class)));
 
     struct Page *node = page_lookup_virtual(spc->root, addr, class, LOOKUP_ALLOC);
-    if (node) unmap_page_remove(node);
+    if (node) unmap_page_remove(node); // removing from virtual page tree, i guess
     /* Disallow root node deallocation */
     if (node == spc->root)
         spc->root = alloc_descriptor(INTERMEDIATE_NODE);
@@ -863,8 +863,6 @@ unmap_page(struct AddressSpace *spc, uintptr_t addr, int class) {
         assert(!res);
     }
     pde_t *pd = KADDR(PTE_ADDR(pdp[pdpi0]));
-    (void)pd;
-
 
     /* Unmap 2 MB hw pages if requested virtual page size is larger than
      * or equal 2 MB.
@@ -873,7 +871,14 @@ unmap_page(struct AddressSpace *spc, uintptr_t addr, int class) {
 
     // LAB 7: Your code here
 
-    size_t pdi0 = 0, pdi1 = 0;
+    size_t pdi0 = PD_INDEX(addr), pdi1 = PD_INDEX(end);
+    if (pdi0 > pdi1) pdi1 = PD_ENTRY_COUNT;
+
+    if (class > 9)
+    {
+        remove_pt(pd, addr, 2 * MB, pdi0, pdi1);
+        goto finish;
+    }
 
     /* Return if page is not present or
      * split 2*MB page into 4KB pages if required.
@@ -885,8 +890,26 @@ unmap_page(struct AddressSpace *spc, uintptr_t addr, int class) {
 
     // LAB 7: Your code here
 
-    (void)pdi1, (void)pdi0;
-    pte_t *pt = NULL;
+    // (void)pdi1, (void)pdi0;
+    // pte_t *pt = NULL;
+
+    
+
+        //  if (!(pdp[pdpi0] & PTE_P))
+        //     return;
+        // /* otherwise we need to split 1*GB page hw page
+        //  * into smaller 2*MB pages, allocting new page table level */
+        // else if (pdp[pdpi0] & PTE_PS) {
+        //     pdpe_t old = pdp[pdpi0];
+        //     res = alloc_pt(pdp + pdpi0);
+        //     assert(!res);
+        //     pde_t *pd = KADDR(PTE_ADDR(pdp[pdpi0]));
+        //     res = alloc_fill_pt(pd, old & ~PTE_PS, 2 * MB, 0, PT_ENTRY_COUNT);
+        //     inval_start = ROUNDDOWN(inval_start, 1 * GB);
+        //     inval_end = ROUNDUP(inval_end, 1 * GB);
+        //     assert(!res);
+        // }
+        // pde_t *pd = KADDR(PTE_ADDR(pdp[pdpi0]));
 
     /* Unmap 4KB hw pages */
     size_t pti0 = PT_INDEX(addr), pti1 = PT_INDEX(end);

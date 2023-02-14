@@ -602,7 +602,7 @@ found:
     }    
     
     // cprintf("BEFORE ASSERT page2pa(new) %lx PADDR(end) %lx CLASS_MASK\n", page2pa(new), PADDR(end));
-    // assert(page2pa(new) >= PADDR(end) || page2pa(new) + CLASS_SIZE(new->class) < IOPHYSMEM);
+    assert(page2pa(new) <= PADDR(end) && page2pa(new) + CLASS_SIZE(new->class) > IOPHYSMEM);
 
     return new;
 }

@@ -795,7 +795,7 @@ memcpy_page(struct AddressSpace *dst, uintptr_t va, struct Page *page) {
     struct AddressSpace* old = switch_address_space(dst);
     
     set_wp(0);
-    memcpy(va, KADDR(page->addr), CLASS_SIZE(page->class));
+    nosan_memcpy((void*) va, KADDR(page->addr), CLASS_SIZE(page->class));
     set_wp(1);
 
     switch_address_space(old);
@@ -883,7 +883,7 @@ unmap_page(struct AddressSpace *spc, uintptr_t addr, int class) {
     size_t pdi0 = PD_INDEX(addr), pdi1 = PD_INDEX(end);
     if (pdi0 > pdi1) pdi1 = PD_ENTRY_COUNT;
 
-    if (class > 9)
+    if (class >= 9)
     {
         remove_pt(pd, addr, 2 * MB, pdi0, pdi1);
         goto finish;
@@ -1802,10 +1802,10 @@ init_memory(void) {
     // LAB 7: Your code here
     // Map [PADDR(__text_start);PADDR(__text_end)] to [__text_start, __text_end] as RW-
 
-    res = map_physical_region(&kspace, __text_start, 
+    res = map_physical_region(&kspace, (uintptr_t) __text_start, 
                                        PADDR(__text_start), 
                                        __text_end - __text_start, 
-                                       PROT_RWX); // TODO ???
+                                       PROT_RWX);
     assert(!res);
 
     /* Allocate kernel stacks */
@@ -1817,10 +1817,13 @@ init_memory(void) {
     res = map_physical_region(&kspace, KERN_STACK_TOP - KERN_STACK_SIZE, 
                                        PADDR(bootstack), 
                                        KERN_STACK_SIZE, 
-                                       PROT_R | PROT_W);; 
+                                       PROT_R | PROT_W); 
     assert(!res);
 
-    res = map_physical_region(&kspace, KERN_PF_STACK_TOP, PADDR(pfstack), KERN_PF_STACK_SIZE, PROT_R | PROT_W); 
+    res = map_physical_region(&kspace, KERN_PF_STACK_TOP - KERN_PF_STACK_SIZE, 
+                                       PADDR(pfstack), 
+                                       KERN_PF_STACK_SIZE, 
+                                       PROT_R | PROT_W); 
     assert(!res);
 
 #ifdef SANITIZE_SHADOW_BASE

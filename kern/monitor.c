@@ -51,7 +51,9 @@ static struct Command commands[] = {
         {"timer_start", "Starts timer",                          mon_start    },
         {"timer_stop",  "Stops timer and prints elapsed time",   mon_stop     },
         {"timer_freq",  "Measures and prints out cpu frequency", mon_frequency},
-        {"memory",      "Dumps memory lists of free pages",      mon_memory   }
+        {"memory",      "Dumps memory lists of free pages",      mon_memory   },
+        {"virt",        "Dumps virtual page tree",               mon_virt     },
+        {"pagetable",   "Dumps whole pml4 table recursively",    mon_pagetable}
 };
 #define NCOMMANDS (sizeof(commands) / sizeof(commands[0]))
 
@@ -179,6 +181,18 @@ int mon_frequency(int argc, char **argv, struct Trapframe *tf) {
 int mon_memory(int argc, char **argv, struct Trapframe *tf) {
 
     dump_memory_lists();
+    return 0;
+}
+
+int mon_pagetable(int argc, char **argv, struct Trapframe *tf)
+{
+    dump_page_table(KADDR(rcr3()));
+    return 0;
+}
+
+int mon_virt(int argc, char **argv, struct Trapframe *tf)
+{
+    dump_virtual_tree(current_space->root, current_space->root->class);
     return 0;
 }
 

@@ -636,12 +636,47 @@ check_virtual_tree(struct Page *page, int class) {
     }
 }
 
+static void spaces(int nspaces)
+{
+    for (unsigned iter = 0; iter < nspaces; iter++)
+        cputchar(' '); 
+}
+
 /*
  * Pretty-print virtual memory tree
  */
 void
 dump_virtual_tree(struct Page *node, int class) {
     // LAB 7: Your code here
+    assert(node);
+
+    int nspaces = MAX_CLASS - class;
+
+    spaces(nspaces);
+    cprintf("VIRT: PAGE_PHY: %016lx CLASS %dd STATE %06x\n", (uint64_t) node->phy, class, 
+                                                            node->state);
+
+    if (node->phy)
+    {
+        spaces(MAX_CLASS - class);
+        cprintf("PHYS: ADDR: %016lx CLASS %dd STATE %06x REFC %dd\n", (uint64_t) page2pa(node->phy), 
+                                                                     node->phy->class, 
+                                                                     node->phy->state, 
+                                                                     node->phy->refc);
+    }
+
+    if (node->left)
+    {
+        spaces(nspaces + 1);
+        cprintf("LEFT:\n");
+        dump_virtual_tree(node->left, class - 1);
+    }
+    else if (node->right)
+    {
+        spaces(nspaces + 1);
+        cprintf("RIGHT:\n");
+        dump_virtual_tree(node->right, class - 1);
+    }
 }
 
 void
@@ -680,6 +715,45 @@ dump_memory_lists(void) {
     }
 }
 
+static void 
+dump_pt_rec(pte_t* pt, int level)
+{
+    size_t pte_size  = 0;
+    size_t pte_count = 0;
+
+    switch(level)
+    {
+        case 4: { pte_size = 512 * GB; pte_count = PML4_ENTRY_COUNT; break; }
+        case 3: { pte_size = 1   * GB; pte_count = PDP_ENTRY_COUNT;  break; }
+        case 2: { pte_size = 2   * MB; pte_count = PD_ENTRY_COUNT;   break; }
+        case 1: { pte_size = 4   * KB; pte_count = PT_ENTRY_COUNT;   break; }
+        default: assert(0); 
+    }
+
+    for (unsigned iter = 0; iter < pte_count; iter++)
+    {
+        if (pt[iter] & PTE_P)
+        {
+            if (pt[iter] & PTE_PS && (pte_size == 2 * MB || pte_size == 1 * GB))
+            {
+                dump_entry(pt[iter], pte_size, 1);
+            }
+            else
+            {
+                if (level > 1)
+                {
+                    dump_entry(pt[iter], pte_size, 0);
+                    dump_pt_rec(KADDR(PTE_ADDR(pt[iter])), level - 1);
+                }
+                else 
+                {
+                    dump_entry(pt[iter], pte_size, 1);
+                }
+            }
+        }
+    }
+}
+
 /*
  * Pretty-print page table
  * You can read about page the table
@@ -693,6 +767,8 @@ dump_page_table(pte_t *pml4) {
     cprintf("Page table:\n");
     (void)addr;
     // LAB 7: Your code here
+    
+    dump_pt_rec(pml4, 4);
 }
 
 inline static int
@@ -795,7 +871,7 @@ memcpy_page(struct AddressSpace *dst, uintptr_t va, struct Page *page) {
     struct AddressSpace* old = switch_address_space(dst);
     
     set_wp(0);
-    nosan_memcpy((void*) va, KADDR(page->addr), CLASS_SIZE(page->class));
+    nosan_memcpy((void*) va, KADDR((physaddr_t)page->phy), CLASS_SIZE(page->class));
     set_wp(1);
 
     switch_address_space(old);
@@ -1502,14 +1578,15 @@ switch_address_space(struct AddressSpace *space) {
     assert(space);
     ///LAB 7: Your code here
     
-    struct AddressSpace *oldspace = current_space;
+    if (space == current_space)
+        return space;
 
-    if (current_space != space) 
-    {
-        current_space = space;
-        lcr3(current_space->cr3); // load to CR3 invalidates whole TLB cache
-    }
-    return oldspace;
+    lcr3(space->cr3);
+
+    struct AddressSpace* cur = current_space;
+    current_space = space;
+
+    return cur;
 }
 
 /* Buffers for filler pages are statically allocated for simplicity
@@ -1570,13 +1647,13 @@ detect_memory(void) {
             assert((start_r->PhysicalStart % PAGE_SIZE) == 0 && "PhysicalStart must be aligned on a 4KiB boundary");
             assert((start_r->NumberOfPages)                  && "NumberOfPages must not be 0");
 
-            uint64_t memory_range_size = start_r->NumberOfPages * PAGE_SIZE;
+            uint64_t mem_size = start_r->NumberOfPages * EFI_PAGE_SIZE;
 
-            assert((start_r->PhysicalStart + memory_range_size <= 0xFFFFFFFFFFFFF000) 
+            assert((start_r->PhysicalStart + mem_size <= 0xFFFFFFFFFFFFF000) 
                        && "NumberOfPages must not be any value that would represent a memory page \
                        with a start address, either physical or virtual, above 0xFFFFFFFFFFFFF000");
 
-            if (start_r->PhysicalStart < IOPHYSMEM || start_r->PhysicalStart + memory_range_size > PADDR(end))
+            if (start_r->PhysicalStart < IOPHYSMEM || start_r->PhysicalStart + mem_size >= PADDR(end))
             {
                 // cprintf("detect_memory() address is not in range, skip \n");
 
@@ -1586,7 +1663,7 @@ detect_memory(void) {
 
             // cprintf("attaching memory region: PhysStart ") ??
 
-            attach_region(start_r->PhysicalStart, start_r->PhysicalStart + memory_range_size, type);
+            attach_region((uintptr_t)start_r->PhysicalStart, start_r->PhysicalStart + mem_size, type);
 
             // next iteration
             start_r = (void *)((uint8_t *)start_r + uefi_lp->MemoryMapDescriptorSize);
@@ -1916,25 +1993,25 @@ init_memory(void) {
 
     res = map_physical_region(&kspace, 0, 
                                        X86ADDR(KERN_BASE_ADDR), 
-                                       MIN(MAX_LOW_ADDR_KERN_SIZE, max_memory_map_addr) - X86ADDR(KERN_BASE_ADDR), 
+                                       MIN(MAX_LOW_ADDR_KERN_SIZE, max_memory_map_addr), 
                                        PROT_R | PROT_W | ALLOC_WEAK);
     assert(!res);
 
-    res = map_physical_region(&kspace, PADDR(__text_start), 
-                                       X86ADDR((uintptr_t)__text_start),
-                                       ROUNDUP(X86ADDR((uintptr_t)__text_end), CLASS_SIZE(0)) - X86ADDR((uintptr_t)__text_start), 
+    res = map_physical_region(&kspace, PADDR(__text_start),
+                                       X86ADDR((uintptr_t)__text_start),   
+                                       ROUNDUP(PADDR(__text_end), CLASS_SIZE(0)) - PADDR(__text_start), 
                                        PROT_R | PROT_X);
     assert(!res);
 
-    res = map_physical_region(&kspace, PADDR(bootstack), 
-                                       X86ADDR(KERN_STACK_TOP - KERN_STACK_SIZE),
-                                       KERN_STACK_TOP - X86ADDR(KERN_STACK_TOP - KERN_STACK_SIZE), 
+    res = map_physical_region(&kspace, PADDR(bootstack),
+                                       X86ADDR(KERN_STACK_TOP - KERN_STACK_SIZE), 
+                                       X86ADDR(KERN_STACK_TOP) - X86ADDR(KERN_STACK_TOP - KERN_STACK_SIZE), 
                                        PROT_R | PROT_W);
     assert(!res);
 
-    res = map_physical_region(&kspace, PADDR(pfstack), 
-                                       X86ADDR(KERN_PF_STACK_TOP - KERN_PF_STACK_SIZE),
-                                       KERN_PF_STACK_TOP - X86ADDR(KERN_PF_STACK_TOP - KERN_PF_STACK_SIZE), 
+    res = map_physical_region(&kspace, PADDR(pfstack),
+                                       X86ADDR(KERN_PF_STACK_TOP - KERN_PF_STACK_SIZE), 
+                                       PADDR(pfstacktop) - PADDR(pfstack), 
                                        PROT_R | PROT_W);
     assert(!res);
 

@@ -642,15 +642,10 @@ static void spaces(int nspaces)
         cputchar(' '); 
 }
 
-/*
- * Pretty-print virtual memory tree
- */
-void
-dump_virtual_tree(struct Page *node, int class) {
-    // LAB 7: Your code here
-    assert(node);
+static void 
+dump_virtual_tree_rec(struct Page *node, int class, int nspaces) {
 
-    int nspaces = MAX_CLASS - class;
+    assert(node);
 
     spaces(nspaces);
     cprintf("VIRT: PAGE_PHY: %016lx CLASS %dd STATE %06x\n", (uint64_t) node->phy, class, 
@@ -658,7 +653,7 @@ dump_virtual_tree(struct Page *node, int class) {
 
     if (node->phy)
     {
-        spaces(MAX_CLASS - class);
+        spaces(nspaces);
         cprintf("PHYS: ADDR: %016lx CLASS %dd STATE %06x REFC %dd\n", (uint64_t) page2pa(node->phy), 
                                                                      node->phy->class, 
                                                                      node->phy->state, 
@@ -667,16 +662,33 @@ dump_virtual_tree(struct Page *node, int class) {
 
     if (node->left)
     {
+        // cputchar('\n');
+
         spaces(nspaces + 1);
         cprintf("LEFT:\n");
-        dump_virtual_tree(node->left, class - 1);
+        dump_virtual_tree_rec(node->left, class - 1, nspaces + 1);
+        
+        // cputchar('\n');
     }
     else if (node->right)
     {
+        // cputchar('\n');
+
         spaces(nspaces + 1);
         cprintf("RIGHT:\n");
-        dump_virtual_tree(node->right, class - 1);
+        dump_virtual_tree_rec(node->right, class - 1, nspaces + 1);
+        
+        // cputchar('\n');
     }
+}
+
+/*
+ * Pretty-print virtual memory tree
+ */
+void
+dump_virtual_tree(struct Page *node, int class) {
+    // LAB 7: Your code here
+    dump_virtual_tree_rec(node, class, 0);
 }
 
 void

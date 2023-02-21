@@ -192,7 +192,7 @@ int mon_pagetable(int argc, char **argv, struct Trapframe *tf)
 
 int mon_virt(int argc, char **argv, struct Trapframe *tf)
 {
-    dump_virtual_tree(current_space->root, current_space->root->class);
+    dump_virtual_tree(current_space->root, MAX_CLASS);
     return 0;
 }
 

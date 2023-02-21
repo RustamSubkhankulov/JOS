@@ -1841,6 +1841,10 @@ init_shadow_pre(void) {
 }
 #endif
 
+#define MAP_MSG(dstart, pstart, size) cprintf("MAPPING [0x%010lx; 0x%010lx] to [0x%010lx; 0x%010lx]\n", \
+                                                          (long unsigned) (pstart), (long unsigned) ((pstart) + (size)), \
+                                                          (long unsigned) (dstart), (long unsigned) ((dstart) + (size))) 
+
 void
 init_memory(void) {
     int res;
@@ -1866,6 +1870,7 @@ init_memory(void) {
     // NOTE: You need to check if map_physical_region returned 0 everywhere! (and panic otherwise)
     // Map [0, max_memory_map_addr] to [KERN_BASE_ADDR, KERN_BASE_ADDR + max_memory_map_addr] as RW- + ALLOC_WEAK
 
+    MAP_MSG(KERN_BASE_ADDR, 0, max_memory_map_addr);
     res = map_physical_region(&kspace, KERN_BASE_ADDR, 0, max_memory_map_addr, PROT_R | PROT_W | ALLOC_WEAK);
     assert(!res);
 
@@ -1879,6 +1884,7 @@ init_memory(void) {
     // LAB 7: Your code here
     // Map [PADDR(__text_start);PADDR(__text_end)] to [__text_start, __text_end] as RW-
 
+    MAP_MSG((uintptr_t) __text_start, PADDR(__text_start), __text_end - __text_start);
     res = map_physical_region(&kspace, (uintptr_t) __text_start, 
                                        PADDR(__text_start), 
                                        __text_end - __text_start, 
@@ -1891,11 +1897,15 @@ init_memory(void) {
     // Map [PADDR(bootstack), PADDR(bootstack) + KERN_STACK_SIZE] to [KERN_STACK_TOP - KERN_STACK_SIZE, KERN_STACK_TOP] as RW-
     // Map [PADDR(pfstack), PADDR(pfstack) + KERN_PF_STACK_SIZE] to [KERN_PF_STACK_TOP - KERN_PF_STACK_SIZE, KERN_PF_STACK_TOP] as RW-
 
+    MAP_MSG(KERN_STACK_TOP - KERN_STACK_SIZE, PADDR(bootstack), KERN_STACK_SIZE);
+
     res = map_physical_region(&kspace, KERN_STACK_TOP - KERN_STACK_SIZE, 
                                        PADDR(bootstack), 
                                        KERN_STACK_SIZE, 
                                        PROT_R | PROT_W); 
     assert(!res);
+
+    MAP_MSG(KERN_PF_STACK_TOP - KERN_PF_STACK_SIZE, PADDR(pfstack), KERN_PF_STACK_SIZE);
 
     res = map_physical_region(&kspace, KERN_PF_STACK_TOP - KERN_PF_STACK_SIZE, 
                                        PADDR(pfstack), 
@@ -1915,6 +1925,8 @@ init_memory(void) {
             // Map [mstart->PhysicalStart, mstart->PhysicalStart+mstart->NumberOfPages*PAGE_SIZE] to
             //     [mstart->VirtualStart, mstart->VirtualStart+mstart->NumberOfPages*PAGE_SIZE] as RW-
         
+            MAP_MSG(mstart->VirtualStart, mstart->PhysicalStart, mstart->NumberOfPages*PAGE_SIZE);
+
             res = map_physical_region(&kspace, mstart->VirtualStart, 
                                                mstart->PhysicalStart, 
                                                mstart->NumberOfPages*PAGE_SIZE, 
@@ -1985,30 +1997,37 @@ init_memory(void) {
     // Map [X86ADDR(KERN_PF_STACK_TOP - KERN_PF_STACK_SIZE), KERN_PF_STACK_TOP] to
     //     [PADDR(pfstack), PADDR(pfstacktop)] as RW-
 
+    // map_region(); 
+
+    MAP_MSG(uefi_lp->FrameBufferBase, FRAMEBUFFER, uefi_lp->FrameBufferSize);
     res = map_physical_region(&kspace, uefi_lp->FrameBufferBase, 
                                        FRAMEBUFFER, 
                                        uefi_lp->FrameBufferSize, 
                                        PROT_R | PROT_W | PROT_WC);
     assert(!res);
 
+    MAP_MSG(0, X86ADDR(KERN_BASE_ADDR), MIN(MAX_LOW_ADDR_KERN_SIZE, max_memory_map_addr));
     res = map_physical_region(&kspace, 0, 
                                        X86ADDR(KERN_BASE_ADDR), 
                                        MIN(MAX_LOW_ADDR_KERN_SIZE, max_memory_map_addr), 
                                        PROT_R | PROT_W | ALLOC_WEAK);
     assert(!res);
 
+    MAP_MSG(PADDR(__text_start), X86ADDR((uintptr_t)__text_start), ROUNDUP(PADDR(__text_end), CLASS_SIZE(0)) - PADDR(__text_start));
     res = map_physical_region(&kspace, PADDR(__text_start),
                                        X86ADDR((uintptr_t)__text_start),   
                                        ROUNDUP(PADDR(__text_end), CLASS_SIZE(0)) - PADDR(__text_start), 
                                        PROT_R | PROT_X);
     assert(!res);
 
+    MAP_MSG(PADDR(bootstack), X86ADDR(KERN_STACK_TOP - KERN_STACK_SIZE), X86ADDR(KERN_STACK_TOP) - X86ADDR(KERN_STACK_TOP - KERN_STACK_SIZE));
     res = map_physical_region(&kspace, PADDR(bootstack),
                                        X86ADDR(KERN_STACK_TOP - KERN_STACK_SIZE), 
                                        X86ADDR(KERN_STACK_TOP) - X86ADDR(KERN_STACK_TOP - KERN_STACK_SIZE), 
                                        PROT_R | PROT_W);
     assert(!res);
 
+    MAP_MSG(PADDR(pfstack), X86ADDR(KERN_PF_STACK_TOP - KERN_PF_STACK_SIZE), PADDR(pfstacktop) - PADDR(pfstack));
     res = map_physical_region(&kspace, PADDR(pfstack),
                                        X86ADDR(KERN_PF_STACK_TOP - KERN_PF_STACK_SIZE), 
                                        PADDR(pfstacktop) - PADDR(pfstack), 

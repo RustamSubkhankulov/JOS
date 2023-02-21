@@ -20,6 +20,7 @@
         "sstream": "c",
         "streambuf": "c",
         "system_error": "c",
-        "kclock.h": "c"
+        "kclock.h": "c",
+        "utility": "c"
     }
 }

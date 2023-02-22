@@ -655,9 +655,9 @@ dump_virtual_tree_rec(struct Page *node, int class, int nspaces) {
     {
         spaces(nspaces);
         cprintf("PHYS: ADDR: %016lx CLASS %dd STATE %06x REFC %dd\n", (uint64_t) page2pa(node->phy), 
-                                                                     node->phy->class, 
-                                                                     node->phy->state, 
-                                                                     node->phy->refc);
+                                                                       node->phy->class, 
+                                                                       node->phy->state, 
+                                                                       node->phy->refc);
     }
 
     if (node->left)
@@ -883,7 +883,7 @@ memcpy_page(struct AddressSpace *dst, uintptr_t va, struct Page *page) {
     struct AddressSpace* old = switch_address_space(dst);
     
     set_wp(0);
-    nosan_memcpy((void*) va, KADDR((physaddr_t)page->phy), CLASS_SIZE(page->class));
+    nosan_memcpy((void*) va, KADDR((physaddr_t)page2pa(page->phy)), CLASS_SIZE(page->class));
     set_wp(1);
 
     switch_address_space(old);

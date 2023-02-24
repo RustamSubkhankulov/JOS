@@ -437,7 +437,7 @@ load_icode(struct Env *env, uint8_t *binary, size_t size) {
 
         // TODO
 
-        uintptr_t p_va   = (uintptr_t) cur_ph->p_va;
+        uintptr_t p_va   = (uintptr_t) KADDR(cur_ph->p_va);
         uint64_t  filesz = cur_ph->p_filesz;
         uint64_t  memsz  = cur_ph->p_memsz;
 

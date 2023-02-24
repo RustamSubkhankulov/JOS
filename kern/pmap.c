@@ -2011,40 +2011,56 @@ init_memory(void) {
 
     // map_region(); 
 
-    MAP_MSG(uefi_lp->FrameBufferBase, FRAMEBUFFER, uefi_lp->FrameBufferSize);
-    res = map_physical_region(&kspace, uefi_lp->FrameBufferBase, 
-                                       FRAMEBUFFER, 
-                                       uefi_lp->FrameBufferSize, 
-                                       PROT_R | PROT_W | PROT_WC);
-    assert(!res);
+    // MAP_MSG(uefi_lp->FrameBufferBase, FRAMEBUFFER, uefi_lp->FrameBufferSize);
+    // res = map_physical_region(&kspace, uefi_lp->FrameBufferBase, 
+    //                                    FRAMEBUFFER, 
+    //                                    uefi_lp->FrameBufferSize, 
+    //                                    PROT_R | PROT_W | PROT_WC);
+    // assert(!res);
 
-    MAP_MSG(0, X86ADDR(KERN_BASE_ADDR), MIN(MAX_LOW_ADDR_KERN_SIZE, max_memory_map_addr));
-    res = map_physical_region(&kspace, 0, 
-                                       X86ADDR(KERN_BASE_ADDR), 
-                                       MIN(MAX_LOW_ADDR_KERN_SIZE, max_memory_map_addr), 
-                                       PROT_R | PROT_W | ALLOC_WEAK);
-    assert(!res);
+    // MAP_MSG(0, X86ADDR(KERN_BASE_ADDR), MIN(MAX_LOW_ADDR_KERN_SIZE, max_memory_map_addr));
+    // res = map_physical_region(&kspace, 0,
+    //                                    X86ADDR(KERN_BASE_ADDR), 
+    //                                    MIN(MAX_LOW_ADDR_KERN_SIZE, max_memory_map_addr), 
+    //                                    PROT_R | PROT_W | ALLOC_WEAK);
+    // assert(!res);
 
-    MAP_MSG(PADDR(__text_start), X86ADDR((uintptr_t)__text_start), ROUNDUP(PADDR(__text_end), CLASS_SIZE(0)) - PADDR(__text_start));
-    res = map_physical_region(&kspace, PADDR(__text_start),
-                                       X86ADDR((uintptr_t)__text_start),   
-                                       ROUNDUP(PADDR(__text_end), CLASS_SIZE(0)) - PADDR(__text_start), 
-                                       PROT_R | PROT_X);
-    assert(!res);
+    // MAP_MSG(PADDR(__text_start), X86ADDR((uintptr_t)__text_start), ROUNDUP(PADDR(__text_end), CLASS_SIZE(0)) - PADDR(__text_start));
+    // res = map_physical_region(&kspace, PADDR(__text_start),
+    //                                    X86ADDR((uintptr_t)__text_start),   
+    //                                    ROUNDUP(PADDR(__text_end), CLASS_SIZE(0)) - PADDR(__text_start), 
+    //                                    PROT_R | PROT_X);
+    // assert(!res);
 
-    MAP_MSG(PADDR(bootstack), X86ADDR(KERN_STACK_TOP - KERN_STACK_SIZE), X86ADDR(KERN_STACK_TOP) - X86ADDR(KERN_STACK_TOP - KERN_STACK_SIZE));
-    res = map_physical_region(&kspace, PADDR(bootstack),
-                                       X86ADDR(KERN_STACK_TOP - KERN_STACK_SIZE), 
-                                       X86ADDR(KERN_STACK_TOP) - X86ADDR(KERN_STACK_TOP - KERN_STACK_SIZE), 
-                                       PROT_R | PROT_W);
-    assert(!res);
+    // MAP_MSG(PADDR(bootstack), X86ADDR(KERN_STACK_TOP - KERN_STACK_SIZE), X86ADDR(KERN_STACK_TOP) - X86ADDR(KERN_STACK_TOP - KERN_STACK_SIZE));
+    // res = map_physical_region(&kspace, PADDR(bootstack),
+    //                                    X86ADDR(KERN_STACK_TOP - KERN_STACK_SIZE), 
+    //                                    X86ADDR(KERN_STACK_TOP) - X86ADDR(KERN_STACK_TOP - KERN_STACK_SIZE), 
+    //                                    PROT_R | PROT_W);
+    // assert(!res);
 
-    MAP_MSG(PADDR(pfstack), X86ADDR(KERN_PF_STACK_TOP - KERN_PF_STACK_SIZE), PADDR(pfstacktop) - PADDR(pfstack));
-    res = map_physical_region(&kspace, PADDR(pfstack),
-                                       X86ADDR(KERN_PF_STACK_TOP - KERN_PF_STACK_SIZE), 
-                                       PADDR(pfstacktop) - PADDR(pfstack), 
-                                       PROT_R | PROT_W);
-    assert(!res);
+    // MAP_MSG(PADDR(pfstack), X86ADDR(KERN_PF_STACK_TOP - KERN_PF_STACK_SIZE), PADDR(pfstacktop) - PADDR(pfstack));
+    // res = map_physical_region(&kspace, PADDR(pfstack),
+    //                                    X86ADDR(KERN_PF_STACK_TOP - KERN_PF_STACK_SIZE), 
+    //                                    PADDR(pfstacktop) - PADDR(pfstack), 
+    //                                    PROT_R | PROT_W);
+    // assert(!res);
+
+    if (map_physical_region(&kspace, FRAMEBUFFER, uefi_lp->FrameBufferBase, uefi_lp->FrameBufferSize, PROT_R | PROT_W | PROT_WC)) 
+        panic("Init memory: mapping [FRAMEBUFFER, FRAMEBUFFER + uefi_lp-4FrameBufferSize] unsuccessful)"); 
+        
+    if (map_physical_region(&kspace, X86ADDR(KERN_BASE_ADDR), 0, MIN(MAX_LOW_ADDR_KERN_SIZE, max_memory_map_addr), PROT_R | PROT_W | ALLOC_WEAK)) 
+        panic("Init memory: mapping [X86ADDR(KERN_BASE_ADDR),MIN(MAX_LOW_ADDR_KERN_SIZE, max_memory_map_addr)] unsuccessful)"); 
+        
+    if (map_physical_region(&kspace, X86ADDR((uintptr_t)__text_start), PADDR(__text_start), ROUNDUP(X86ADDR((uintptr_t)__text_end), CLASS_SIZE(0)) - X86ADDR((uintptr_t)__text_start), PROT_X | PROT_R))
+        panic("Init memory: mapping X86ADDR((uintptr_)__text_start),ROUNDUP(X86ADDR((uintptr_t)__text_end), CLASS_SIZE(0))] unsuccessful)"); 
+        
+    if (map_physical_region(&kspace, X86ADDR(KERN_STACK_TOP - KERN_STACK_SIZE), PADDR(bootstack), KERN_STACK_SIZE, PROT_R | PROT_W))
+        panic("Init memory: mapping [X86ADDR(KERN_STACK_TOP - KERN_STACK_SIZE), KERN_STACK_TOP] unsuccessfull"); 
+        
+    if(map_physical_region(&kspace, X86ADDR(KERN_PF_STACK_TOP - KERN_PF_STACK_SIZE), PADDR(pfstack), KERN_PF_STACK_SIZE, PROT_R | PROT_W)) 
+        panic("Init memory: mapping [X86ADDR(KERN_PF_STACK_TOP - KERN_PF_STACK_SIZE), KERN_PF_STACK_TOP] unsuccessful,"); 
+
 
     if (trace_memory_more) dump_page_table(kspace.pml4);
 

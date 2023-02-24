@@ -1900,7 +1900,7 @@ init_memory(void) {
     res = map_physical_region(&kspace, (uintptr_t) __text_start, 
                                        PADDR(__text_start), 
                                        __text_end - __text_start, 
-                                       PROT_RWX);
+                                       PROT_R | PROT_X);
     assert(!res);
 
     /* Allocate kernel stacks */

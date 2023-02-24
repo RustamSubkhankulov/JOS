@@ -175,7 +175,8 @@ get_rsdp(void) {
     if (rsdp_saved)
         return rsdp_saved;
 
-    RSDP*  rsdp_ptr = (RSDP*) uefi_lp->ACPIRoot;
+    // RSDP*  rsdp_ptr = (RSDP*) ((LOADER_PARAMS*) (KADDR((physaddr_t)uefi_lp)))->ACPIRoot;
+    RSDP* rsdp_ptr = (RSDP*) uefi_lp->ACPIRoot;
     assert(rsdp_ptr); 
 
     size_t rsdp_size = sizeof(RSDP);

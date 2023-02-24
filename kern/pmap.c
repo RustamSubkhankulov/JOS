@@ -648,16 +648,16 @@ dump_virtual_tree_rec(struct Page *node, int class, int nspaces) {
     assert(node);
 
     spaces(nspaces);
-    cprintf("VIRT: PAGE_PHY: %016lx CLASS %dd STATE %06x\n", (uint64_t) node->phy, class, 
-                                                            node->state);
+    cprintf("VIRT: PAGE_PHY: %016lxh CLASS %dd STATE %06xh\n", (uint64_t) node->phy, class, 
+                                                                node->state);
 
     if (node->phy)
     {
         spaces(nspaces);
-        cprintf("PHYS: ADDR: %016lx CLASS %dd STATE %06x REFC %dd\n", (uint64_t) page2pa(node->phy), 
-                                                                       node->phy->class, 
-                                                                       node->phy->state, 
-                                                                       node->phy->refc);
+        cprintf("PHYS: ADDR: %016lxh CLASS %dd STATE %06xh REFC %dd\n", (uint64_t) page2pa(node->phy), 
+                                                                         node->phy->class, 
+                                                                         node->phy->state, 
+                                                                         node->phy->refc);
     }
 
     if (node->left)
@@ -670,7 +670,7 @@ dump_virtual_tree_rec(struct Page *node, int class, int nspaces) {
         
         // cputchar('\n');
     }
-    else if (node->right)
+    if (node->right)
     {
         // cputchar('\n');
 

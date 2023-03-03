@@ -119,8 +119,14 @@ static struct Page *alloc_page(int class, int flags);
 void
 ensure_free_desc(size_t count) {
     if (free_desc_count < count) {
+
+        // cprintf("ensure_free_desc(): before alloc_page() free %lu count %lu \n", free_desc_count, count);
+
         struct Page *res = alloc_page(POOL_CLASS, ALLOC_POOL);
         (void)res;
+        
+        // cprintf("ensure_free_desc(): after alloc_page() free %lu count %lu res %p\n", free_desc_count, count, res);
+        
         if (!res) panic("Out of memory\n");
     }
 
@@ -452,7 +458,7 @@ attach_region(uintptr_t start_r, uintptr_t end_r, enum PageState type) {
 
     // LAB 6: Your code here
 
-    // cprintf("attach_region(): start %lx end %lx \n", start_r, end_r);
+    cprintf("attach_region(): start %lx end %lx \n", start_r, end_r);
 
     while (start_r < end_r)
     {
@@ -1192,7 +1198,7 @@ found:
         newpool->next = first_pool;
         first_pool = newpool;
         free_desc_count += ndesc;
-        if (trace_memory_more) cprintf("Allocated pool of size %zu at [%08lX, %08lX]\n",
+        if (1) cprintf("Allocated pool of size %zu at [%08lX, %08lX]\n",
                                        ndesc, page2pa(peer), page2pa(peer) + (long)CLASS_MASK(class));
     }
 
@@ -1208,12 +1214,12 @@ found:
         first_pool->peer = new;
         allocating_pool = 0;
     } else {
-        if (trace_memory_more) cprintf("Allocated page at [%08lX, %08lX] class=%d\n",
+        if (1) cprintf("Allocated page at [%08lX, %08lX] class=%d\n",
                                        page2pa(new), page2pa(new) + (long)CLASS_MASK(new->class), new->class);
     }    
     
-    // cprintf("page2pa(new) %lx PADDR(end) %lx \n", page2pa(new), PADDR(end));
-    assert(!(page2pa(new) >= PADDR(end) || page2pa(new) + CLASS_MASK(new->class) < IOPHYSMEM));
+    // cprintf("page2pa(new) %lx PADDR(end) %lx page2pa(new) + CLASS_MASK(new->class) %llx IOPHYSMEM %x \n", page2pa(new), PADDR(end), page2pa(new) + CLASS_MASK(new->class), IOPHYSMEM);
+    assert((page2pa(new) >= PADDR(end) || page2pa(new) + CLASS_MASK(new->class) < IOPHYSMEM));
 
     return new;
 }
@@ -1665,16 +1671,16 @@ detect_memory(void) {
                        && "NumberOfPages must not be any value that would represent a memory page \
                        with a start address, either physical or virtual, above 0xFFFFFFFFFFFFF000");
 
-            if (start_r->PhysicalStart < IOPHYSMEM || start_r->PhysicalStart + mem_size >= PADDR(end))
+            cprintf("here's region, take a look(): start %lx end %lx \n", start_r->PhysicalStart, start_r->PhysicalStart + mem_size);
+
+            if (!(start_r->PhysicalStart < IOPHYSMEM || start_r->PhysicalStart + mem_size > PADDR(end)))
             {
-                // cprintf("detect_memory() address is not in range, skip \n");
+                cprintf("detect_memory() address is not in range, skip \n");
 
                 start_r = (void *)((uint8_t *)start_r + uefi_lp->MemoryMapDescriptorSize);
                 continue;
             }
-
-            // cprintf("attaching memory region: PhysStart ") ??
-
+            
             attach_region((uintptr_t)start_r->PhysicalStart, start_r->PhysicalStart + mem_size, type);
 
             // next iteration

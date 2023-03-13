@@ -479,6 +479,9 @@ load_icode(struct Env *env, uint8_t *binary, size_t size) {
         bounds[iter].start = p_va;
         bounds[iter].end   = p_va + memsz;
 
+        int res = map_region(&env->address_space, p_va, NULL, 0, memsz, PROT_USER_ | PROT_R | PROT_W);
+        if (res < 0) panic("load_icode: %i \n", res);
+
         memcpy((void*) p_va, binary + cur_ph->p_offset, (size_t) filesz);
         
         size_t remaining = (size_t) (memsz - filesz);

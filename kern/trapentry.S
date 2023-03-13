@@ -7,6 +7,16 @@
 
 #include <kern/picirq.h>
 
+.globl clock_thdlr
+.type clock_thdlr, @function
+clock_thdlr:
+    jmp .
+
+.globl timer_thdlr
+.type timer_thdlr, @function
+timer_thdlr:
+    jmp .
+
 #ifdef CONFIG_KSPACE
 
 .globl clock_thdlr

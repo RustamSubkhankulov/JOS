@@ -92,11 +92,20 @@ env_init(void) {
 
     /* Allocate envs array with kzalloc_region
      * (don't forget about rounding) */
-    // LAB 8: Your code here
+    // LAB 8: Your code here+
+
+    size_t envs_mem_size = ROUNDUP(sizeof(struct Env) * NENV, PAGE_SIZE);
+    void*  envs_mem = kzalloc_region(envs_mem_size);
+    assert(envs_mem != NULL);
 
     /* Map envs to UENVS read-only,
      * but user-accessible (with PROT_USER_ set) */
-    // LAB 8: Your code here
+    // LAB 8: Your code here+
+
+    int res = map_region(&kspace, UENVS, &kspace, (uintptr_t) envs_mem, envs_mem_size, PROT_R | PROT_USER_);
+    if (res < 0) panic("env_init: %i\n", res);
+
+    envs = (struct Env*) envs_mem;
 
     /* Set up envs array */
 
@@ -448,7 +457,6 @@ load_icode(struct Env *env, uint8_t *binary, size_t size) {
 
     const struct Proghdr* ph_table = (const struct Proghdr*) (binary + phoff);
 
-
     for (uint64_t iter = 0; iter < phnum; iter++)
     {
         const struct Proghdr* cur_ph = ph_table + iter;
@@ -458,7 +466,10 @@ load_icode(struct Env *env, uint8_t *binary, size_t size) {
 
         // TODO
 
-        uintptr_t p_va   = (uintptr_t) KADDR(cur_ph->p_va);
+        // cprintf("ph#%ld va:0x%lx pa:0x%lx \n", iter, cur_ph->p_va, cur_ph->p_pa);
+
+        // uintptr_t p_va   = (uintptr_t) KADDR(cur_ph->p_va);
+        uintptr_t p_va   = cur_ph->p_va;
         uint64_t  filesz = cur_ph->p_filesz;
         uint64_t  memsz  = cur_ph->p_memsz;
 
@@ -481,7 +492,11 @@ load_icode(struct Env *env, uint8_t *binary, size_t size) {
     if (err < 0)
         panic("bind_functions: %i", err);        
 
-    // LAB 8: Your code here
+    // LAB 8: Your code here +-
+
+    int res = map_region(&env->address_space, env->env_tf.tf_rsp, NULL, 0, PAGE_SIZE, PROT_R | PROT_W | ALLOC_ZERO);
+    if (res < 0) panic("load_icode: %i \n", res);
+
     return 0;
 }
 
@@ -499,21 +514,14 @@ env_create(uint8_t *binary, size_t size, enum EnvType type) {
     struct Env* new_env = NULL;
     
     int err = env_alloc(&new_env, 0, type);
-    if (err < 0)
-    {
-        panic("env_alloc: %i", err);
-    }
+    if (err < 0) panic("env_alloc: %i", err);
 
     err = load_icode(new_env, binary, size);
-    if (err < 0)
-    {
-        panic("load_icode: %i", err);
-    }
+    if (err < 0) panic("load_icode: %i", err);
     
     new_env->env_parent_id = 0;
 
     return;
-
 }
 
 
@@ -559,6 +567,8 @@ env_destroy(struct Env *env) {
     if (env == curenv)
         sched_yield();
     // LAB 8: Your code here (set in_page_fault = 0)
+
+    in_page_fault = 0;
 }
 
 #ifdef CONFIG_KSPACE
@@ -643,7 +653,7 @@ env_run(struct Env *env) {
     }
 
     // LAB 3: Your code here
-    // LAB 8: Your code here
+    // LAB 8: Your code here+
 
     if (curenv != env)
     {
@@ -653,6 +663,7 @@ env_run(struct Env *env) {
         curenv = env;
         curenv->env_runs++;
         curenv->env_status = ENV_RUNNING;
+        switch_address_space(&curenv->address_space);
     }
 
     env_pop_tf(&curenv->env_tf);

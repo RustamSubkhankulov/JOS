@@ -458,7 +458,7 @@ attach_region(uintptr_t start_r, uintptr_t end_r, enum PageState type) {
 
     // LAB 6: Your code here
 
-    cprintf("attach_region(): start %lx end %lx \n", start_r, end_r);
+    // cprintf("attach_region(): start %lx end %lx \n", start_r, end_r);
 
     while (start_r < end_r)
     {
@@ -1198,7 +1198,7 @@ found:
         newpool->next = first_pool;
         first_pool = newpool;
         free_desc_count += ndesc;
-        if (1) cprintf("Allocated pool of size %zu at [%08lX, %08lX]\n",
+        if (trace_memory_more) cprintf("Allocated pool of size %zu at [%08lX, %08lX]\n",
                                        ndesc, page2pa(peer), page2pa(peer) + (long)CLASS_MASK(class));
     }
 
@@ -1214,7 +1214,7 @@ found:
         first_pool->peer = new;
         allocating_pool = 0;
     } else {
-        if (1) cprintf("Allocated page at [%08lX, %08lX] class=%d\n",
+        if (trace_memory_more) cprintf("Allocated page at [%08lX, %08lX] class=%d\n",
                                        page2pa(new), page2pa(new) + (long)CLASS_MASK(new->class), new->class);
     }    
     
@@ -1611,17 +1611,30 @@ int
 init_address_space(struct AddressSpace *space) {
     /* Allocte page table with alloc_pt into space->cr3
      * (remember to clean flag bits of result with PTE_ADDR) */
-    // LAB 8: Your code here
+    // LAB 8: Your code here+
+
+    pte_t pte = 0;
+    int res = alloc_pt(&pte);
+    if (res < 0) panic("init_address_space: %i \n", res);
+
+    space->cr3 = (uintptr_t) PTE_ADDR(pte);
 
     /* put its kernel virtual address to space->pml4 */
-    // LAB 8: Your code here
+    // LAB 8: Your code here+
+
+    space->pml4 = (pml4e_t*) KADDR((physaddr_t) space->cr3);
 
     // Allocate virtual tree root node
     // of type INTERMEDIATE_NODE with alloc_rescriptor() of type
-    // LAB 8: Your code here
+    // LAB 8: Your code here+
+
+    space->root = alloc_descriptor(INTERMEDIATE_NODE);
+    assert(space->root != NULL);
 
     /* Initialize UVPT */
-    // LAB 8: Your code here
+    // LAB 8: Your code here+
+
+    space->pml4[PML4_INDEX(UVPT)] = space->cr3 | PTE_P | PTE_U;
 
     /* Why this call is required here and what does it do? */
     propagate_one_pml4(space, &kspace);
@@ -1692,11 +1705,11 @@ detect_memory(void) {
                        && "NumberOfPages must not be any value that would represent a memory page \
                        with a start address, either physical or virtual, above 0xFFFFFFFFFFFFF000");
 
-            cprintf("here's region, take a look(): start %lx end %lx \n", start_r->PhysicalStart, start_r->PhysicalStart + mem_size);
+            // cprintf("here's region, take a look(): start %lx end %lx \n", start_r->PhysicalStart, start_r->PhysicalStart + mem_size);
 
             if (!(start_r->PhysicalStart < IOPHYSMEM || start_r->PhysicalStart + mem_size > PADDR(end)))
             {
-                cprintf("detect_memory() address is not in range, skip \n");
+                // cprintf("detect_memory() address is not in range, skip \n");
 
                 start_r = (void *)((uint8_t *)start_r + uefi_lp->MemoryMapDescriptorSize);
                 continue;

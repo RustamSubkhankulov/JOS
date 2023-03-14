@@ -17,6 +17,7 @@ struct Image_bounds
     {
         uintptr_t start;
         uintptr_t end;
+        uint64_t size;
     };
 
 static const int Loaded_segments_num = 3;

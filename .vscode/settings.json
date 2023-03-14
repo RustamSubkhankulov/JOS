@@ -21,6 +21,8 @@
         "streambuf": "c",
         "system_error": "c",
         "kclock.h": "c",
-        "utility": "c"
+        "utility": "c",
+        "stdio.h": "c",
+        "env.h": "c"
     }
 }

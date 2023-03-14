@@ -889,7 +889,7 @@ memcpy_page(struct AddressSpace *dst, uintptr_t va, struct Page *page) {
     struct AddressSpace* old = switch_address_space(dst);
     
     set_wp(0);
-    nosan_memcpy((void*) va, KADDR((physaddr_t)page2pa(page->phy)), CLASS_SIZE(page->class));
+    nosan_memcpy((void*) va, KADDR((physaddr_t)page2pa(page)), CLASS_SIZE(page->class));
     set_wp(1);
 
     switch_address_space(old);
@@ -2094,7 +2094,22 @@ static uintptr_t user_mem_check_addr;
 int
 user_mem_check(struct Env *env, const void *va, size_t len, int perm) {
     // LAB 8: Your code here
-    return -E_FAULT;
+
+    uintptr_t start = (uintptr_t) va;
+    uintptr_t end = start + len;
+
+    while (start < end)
+    {
+        struct Page* page = page_lookup_virtual(curenv->address_space.root, start, 0, 0);
+        assert(page);
+
+        if ((page->state & perm) != perm)
+            return -E_FAULT;
+
+        start += PAGE_SIZE;
+    }
+
+    return 0;
 }
 
 void

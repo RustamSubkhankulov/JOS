@@ -212,7 +212,7 @@ env_alloc(struct Env **newenv_store, envid_t parent_id, enum EnvType type) {
 #endif
 
     /* For now init trapframe with IF set */
-    env->env_tf.tf_rflags = FL_IF;
+    // env->env_tf.tf_rflags = FL_IF;
 
     /* Commit the allocation */
     env_free_list = env->env_link;
@@ -464,28 +464,29 @@ load_icode(struct Env *env, uint8_t *binary, size_t size) {
         if (cur_ph->p_type != ELF_PROG_LOAD)
             continue;
 
-        // TODO
+        cprintf("ph#%ld va:0x%lx pa:0x%lx flags:0x%x \n", iter, cur_ph->p_va, cur_ph->p_pa, cur_ph->p_flags);
 
-        // cprintf("ph#%ld va:0x%lx pa:0x%lx \n", iter, cur_ph->p_va, cur_ph->p_pa);
-
-        // uintptr_t p_va   = (uintptr_t) KADDR(cur_ph->p_va);
         uintptr_t p_va   = cur_ph->p_va;
         uint64_t  filesz = cur_ph->p_filesz;
         uint64_t  memsz  = cur_ph->p_memsz;
 
-        if (iter > Loaded_segments_num)
+        if (iter >= Loaded_segments_num)
             panic("Number of loading segments is more than expected \n");
 
         bounds[iter].start = p_va;
         bounds[iter].end   = p_va + memsz;
+        bounds[iter].size  = memsz;
 
-        int res = map_region(&env->address_space, p_va, NULL, 0, memsz, PROT_USER_ | PROT_R | PROT_W);
-        if (res < 0) panic("load_icode: %i \n", res);
+        int res = map_region(&kspace, p_va, NULL, 0, memsz, PROT_RWX | ALLOC_ZERO);
+        if (res < 0) panic("map prog to kspace: %i \n", res);
 
         memcpy((void*) p_va, binary + cur_ph->p_offset, (size_t) filesz);
-        
-        size_t remaining = (size_t) (memsz - filesz);
-        memset((void*) p_va + filesz, 0, remaining);
+
+        uint32_t prog_flags = cur_ph->p_flags; 
+        cprintf("prog_flags: 0x%x \n", prog_flags);
+
+        res = map_region(&env->address_space, p_va, &kspace, p_va, memsz, prog_flags | PROT_USER_);
+        if (res < 0) panic("map prog to env->address_space: %i \n", res);
     }
 
     env->binary = binary;
@@ -495,9 +496,12 @@ load_icode(struct Env *env, uint8_t *binary, size_t size) {
     if (err < 0)
         panic("bind_functions: %i", err);        
 
-    // LAB 8: Your code here +-
+    for (unsigned iter = 0; iter < phnum; iter++)
+        unmap_region(&kspace, bounds[iter].start, bounds[iter].size);
 
-    int res = map_region(&env->address_space, env->env_tf.tf_rsp, NULL, 0, PAGE_SIZE, PROT_R | PROT_W | ALLOC_ZERO);
+    // LAB 8: Your code here +
+
+    int res = map_region(&env->address_space, USER_STACK_TOP - PAGE_SIZE, NULL, 0, PAGE_SIZE, PROT_R | PROT_W | PROT_USER_ | ALLOC_ZERO);
     if (res < 0) panic("load_icode: %i \n", res);
 
     return 0;

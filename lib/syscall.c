@@ -15,9 +15,9 @@ syscall(uintptr_t num, bool check, uintptr_t a1, uintptr_t a2, uintptr_t a3, uin
      */
 
     register uintptr_t _a0 asm("rax") = num,
-                           _a1 asm("rdx") = a1, _a2 asm("rcx") = a2,
-                           _a3 asm("rbx") = a3, _a4 asm("rdi") = a4,
-                           _a5 asm("rsi") = a5, _a6 asm("r8") = a6;
+                       _a1 asm("rdx") = a1, _a2 asm("rcx") = a2,
+                       _a3 asm("rbx") = a3, _a4 asm("rdi") = a4,
+                       _a5 asm("rsi") = a5, _a6 asm("r8")  = a6;
 
     /* Interrupt kernel with T_SYSCALL.
      * 

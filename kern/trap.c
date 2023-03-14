@@ -17,8 +17,35 @@
 
 static struct Taskstate ts;
 
-extern void clock_thdlr(void);
-extern void timer_thdlr(void);
+#ifdef CONFIG_KSPACE
+
+    extern void clock_thdlr(void);
+    extern void timer_thdlr(void);
+
+#else 
+
+    extern void divide_thdlr(void);
+    extern void debug_thdlr(void);
+    extern void nmi_thdlr(void);
+    extern void brkpt_thdlr(void);
+    extern void oflow_thdlr(void);
+    extern void bound_thdlr(void);
+    extern void illop_thdlr(void);
+    extern void device_thdlr(void);
+    extern void dblflt_thdlr(void);
+    extern void tss_thdlr(void);
+    extern void segnp_thdlr(void);
+    extern void stack_thdlr(void);
+    extern void gpflt_thdlr(void);
+    extern void pgftl_thdlr(void);
+    extern void fperr_thdlr(void);
+    extern void align_thdlr(void);
+    extern void mchk_thdlr(void);
+    extern void simderr_thdlr(void);
+
+    extern void syscall_hdlr(void);
+
+#endif 
 
 /* For debugging, so print_trapframe can distinguish between printing
  * a saved trapframe and printing the current trapframe and print some
@@ -110,6 +137,27 @@ trap_init(void) {
     /* Insert trap handlers into IDT */
     // LAB 8: Your code here
 
+    idt[T_DIVIDE]  = GATE(1, GD_KT, (uint64_t) (&divide_thdlr),  0);
+    idt[T_DEBUG]   = GATE(1, GD_KT, (uint64_t) (&debug_thdlr),   0);
+    idt[T_NMI]     = GATE(1, GD_KT, (uint64_t) (&nmi_thdlr),     0);
+    idt[T_BRKPT]   = GATE(1, GD_KT, (uint64_t) (&brkpt_thdlr),   3);
+    idt[T_OFLOW]   = GATE(1, GD_KT, (uint64_t) (&oflow_thdlr),   0);
+    idt[T_BOUND]   = GATE(1, GD_KT, (uint64_t) (&bound_thdlr),   0);
+    idt[T_ILLOP]   = GATE(1, GD_KT, (uint64_t) (&illop_thdlr),   0);
+    idt[T_DEVICE]  = GATE(1, GD_KT, (uint64_t) (&device_thdlr),  0);
+    idt[T_DBLFLT]  = GATE(1, GD_KT, (uint64_t) (&dblflt_thdlr),  0);
+    idt[T_TSS]     = GATE(1, GD_KT, (uint64_t) (&tss_thdlr),     0);
+    idt[T_SEGNP]   = GATE(1, GD_KT, (uint64_t) (&segnp_thdlr),   0);
+    idt[T_STACK]   = GATE(1, GD_KT, (uint64_t) (&stack_thdlr),   0);
+    idt[T_GPFLT]   = GATE(1, GD_KT, (uint64_t) (&gpflt_thdlr),   0);
+    idt[T_PGFLT]   = GATE(1, GD_KT, (uint64_t) (&pgftl_thdlr),   0);
+    idt[T_FPERR]   = GATE(1, GD_KT, (uint64_t) (&fperr_thdlr),   0);
+    idt[T_ALIGN]   = GATE(1, GD_KT, (uint64_t) (&align_thdlr),   0);
+    idt[T_MCHK]    = GATE(1, GD_KT, (uint64_t) (&mchk_thdlr),    0);
+    idt[T_SIMDERR] = GATE(1, GD_KT, (uint64_t) (&simderr_thdlr), 0);
+
+    idt[T_SYSCALL] = GATE(0, GD_KT, (uint64_t) (&syscall_hdlr), 3);
+
     /* Setup #PF handler dedicated stack
      * It should be switched on #PF because
      * #PF is the only kind of exception that
@@ -123,13 +171,15 @@ trap_init(void) {
 
 void clock_idt_init(void)
 {
-    idt[IRQ_OFFSET + IRQ_CLOCK] = GATE(0, GD_KT, (uint64_t) (&clock_thdlr), 0);
-     //^^^^^^^^^^^^^^^^^^^^^^^^           ^^^^^             ^^^^^^^^^^^^^   ^^
-     // we get interrupt with offset      kernel text       Trapentry.S     Only from kernel
+    #ifdef CONFIG_KSPACE
 
-    idt[IRQ_OFFSET + IRQ_TIMER] = GATE(0, GD_KT, (uint64_t) (&timer_thdlr), 0);
+        idt[IRQ_OFFSET + IRQ_CLOCK] = GATE(0, GD_KT, (uint64_t) (&clock_thdlr), 0);
+        //^^^^^^^^^^^^^^^^^^^^^^^^           ^^^^^             ^^^^^^^^^^^^^   ^^
+        // we get interrupt with offset      kernel text       Trapentry.S     Only from kernel
 
-    // lidt(&idt_pd);
+        idt[IRQ_OFFSET + IRQ_TIMER] = GATE(0, GD_KT, (uint64_t) (&timer_thdlr), 0);
+
+    #endif 
 }
 
 /* Initialize and load the per-CPU TSS and IDT */
@@ -248,6 +298,7 @@ trap_dispatch(struct Trapframe *tf) {
         return;
     case T_BRKPT:
         // LAB 8: Your code here
+        monitor(tf);
         return;
     case IRQ_OFFSET + IRQ_SPURIOUS:
         /* Handle spurious interrupts
@@ -344,6 +395,11 @@ trap(struct Trapframe *tf) {
         if (!res) {
             in_page_fault = 0;
             env_pop_tf(tf);
+        }
+        else 
+        {
+            if (trace_pagefaults)
+                cprintf("force_alloc_page failed: %i \n", res);
         }
     }
 

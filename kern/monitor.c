@@ -94,7 +94,13 @@ mon_backtrace(int argc, char **argv, struct Trapframe *tf) {
 
     cprintf("Stack backtrace:" "\n");
 
-    uint64_t rbp = read_rbp();
+    uint64_t rbp = 0;
+
+    if (tf == NULL) // calling from kernel
+        rbp = read_rbp();
+    else 
+        rbp = tf->tf_regs.reg_rbp;
+
     struct Ripdebuginfo info = {};
 
     while (rbp != 0)
@@ -230,6 +236,7 @@ runcmd(char *buf, struct Trapframe *tf) {
     return 0;
 }
 
+// tf == NULL for kernel
 void
 monitor(struct Trapframe *tf) {
 

@@ -82,6 +82,7 @@ static int
 asan_unpoison_shared_region(void *start, void *end, void *arg) {
     (void)start, (void)end, (void)arg;
     // LAB 8: Your code here
+    platform_asan_unpoison(start, end - start);
     return 0;
 }
 
@@ -102,11 +103,20 @@ platform_asan_init() {
     /* 1. Program segments (text, data, rodata, bss) */
     // LAB 8: Your code here
 
+    // struct Env* current = &envs[ENVX(sys_getenvid())];
+    platform_asan_unpoison((void*) asan_internal_shadow_start, asan_internal_shadow_end - asan_internal_shadow_start);
+
     /* 2. Stacks (USER_EXCEPTION_STACK_TOP, USER_STACK_TOP) */
     // LAB 8: Your code here
 
+    platform_asan_unpoison((void*) USER_EXCEPTION_STACK_TOP - USER_EXCEPTION_STACK_SIZE, USER_EXCEPTION_STACK_SIZE);
+    platform_asan_unpoison((void*) USER_STACK_TOP - USER_STACK_SIZE, USER_STACK_SIZE);
+
     /* 3. Kernel exposed info (UENVS, UVSYS (only for lab 12)) */
     // LAB 8: Your code here
+
+    platform_asan_unpoison((void*) SANITIZE_USER_EXTRA_SHADOW_BASE, SANITIZE_USER_EXTRA_SHADOW_SIZE);
+    platform_asan_unpoison((void*) SANITIZE_USER_VPT_SHADOW_BASE, SANITIZE_USER_VPT_SHADOW_SIZE);
 
 #if LAB >= 12
     platform_asan_unpoison((uptr)UVSYS, NVSYSCALLS * sizeof(int));
@@ -115,6 +125,9 @@ platform_asan_init() {
     /* 4. Shared pages
      * HINT: Use foreach_shared_region() with asan_unpoison_shared_region() */
     // LAB 8: Your code here
+
+    int res = foreach_shared_region(asan_unpoison_shared_region, NULL);
+    if (res < 0) panic("failed to unpoison shared pages: %i\n", res);
 }
 
 

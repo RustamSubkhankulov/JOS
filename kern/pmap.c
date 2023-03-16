@@ -1950,7 +1950,6 @@ init_memory(void) {
     // Map [PADDR(pfstack), PADDR(pfstack) + KERN_PF_STACK_SIZE] to [KERN_PF_STACK_TOP - KERN_PF_STACK_SIZE, KERN_PF_STACK_TOP] as RW-
 
     MAP_MSG(KERN_STACK_TOP - KERN_STACK_SIZE, PADDR(bootstack), KERN_STACK_SIZE);
-
     res = map_physical_region(&kspace, KERN_STACK_TOP - KERN_STACK_SIZE, 
                                        PADDR(bootstack), 
                                        KERN_STACK_SIZE, 
@@ -1958,7 +1957,6 @@ init_memory(void) {
     assert(!res);
 
     MAP_MSG(KERN_PF_STACK_TOP - KERN_PF_STACK_SIZE, PADDR(pfstack), KERN_PF_STACK_SIZE);
-
     res = map_physical_region(&kspace, KERN_PF_STACK_TOP - KERN_PF_STACK_SIZE, 
                                        PADDR(pfstack), 
                                        KERN_PF_STACK_SIZE, 
@@ -2051,7 +2049,7 @@ init_memory(void) {
 
 
     if (map_physical_region(&kspace, FRAMEBUFFER, uefi_lp->FrameBufferBase, uefi_lp->FrameBufferSize, PROT_R | PROT_W | PROT_WC)) 
-        panic("Init memory: mapping [FRAMEBUFFER, FRAMEBUFFER + uefi_lp-4FrameBufferSize] unsuccessful)"); 
+        panic("Init memory: mapping [FRAMEBUFFER, FRAMEBUFFER + uefi_lp->FrameBufferSize] unsuccessful)"); 
         
     if (map_physical_region(&kspace, X86ADDR(KERN_BASE_ADDR), 0, MIN(MAX_LOW_ADDR_KERN_SIZE, max_memory_map_addr), PROT_R | PROT_W | ALLOC_WEAK)) 
         panic("Init memory: mapping [X86ADDR(KERN_BASE_ADDR),MIN(MAX_LOW_ADDR_KERN_SIZE, max_memory_map_addr)] unsuccessful)"); 
@@ -2104,7 +2102,10 @@ user_mem_check(struct Env *env, const void *va, size_t len, int perm) {
         assert(page);
 
         if ((page->state & perm) != perm)
+        {
+            user_mem_check_addr = start;
             return -E_FAULT;
+        }
 
         start += PAGE_SIZE;
     }

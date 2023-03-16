@@ -77,8 +77,11 @@ load_user_dwarf_info(struct Dwarf_Addrs *addrs) {
 
             if (strcmp(sections[sections_iter].name, shstr + sh_name) == 0)
             {
+
                 *(sections[sections_iter].start) = curenv->binary  + cur_sec_header->sh_offset;
                 *(sections[sections_iter].end  ) = *(sections->start) + cur_sec_header->sh_size;
+
+                user_mem_assert(curenv, *(sections[sections_iter].start), cur_sec_header->sh_size, PROT_R);
 
                 goto found;
             }

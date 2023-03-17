@@ -134,7 +134,7 @@ i386_init(void) {
     * Can't call cprintf until after we do this! */
     cons_init();
 
-    tsc_calibrate();
+    // tsc_calibrate();
 
     if (trace_init) {
         cprintf("6828 decimal is %o octal!\n", 6828);

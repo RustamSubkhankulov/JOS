@@ -79,7 +79,10 @@ static bool check_sum_zero(const void* addr, size_t size)
     unsigned char sum = 0;
 
     for (size_t iter = 0; iter < size; iter++)
-        sum += *((unsigned char*) addr + iter);
+    {
+        unsigned char val = *((unsigned char*) addr + iter);
+        sum = (unsigned char) (sum + val);
+    }        
 
     return (sum == 0);
 }

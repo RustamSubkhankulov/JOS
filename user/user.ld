@@ -10,7 +10,7 @@ SECTIONS
 	/* Load programs at this address: "." means the current address */
 	. = 0x800000;
 
-	.text : {
+	.text ALIGN(4K) : {
 		__text_start = .;
 		*(.text .stub .text.* .gnu.linkonce.t.*)
 		. = ALIGN(8);
@@ -24,7 +24,7 @@ SECTIONS
 		__rodata_end = .;
 	}
 
-	.data : {
+	.data ALIGN(4K) : {
 		__data_start = .;
 		*(.data .data.rel.local)
 		__data_end = .;
@@ -46,7 +46,7 @@ SECTIONS
 
 	. = ALIGN(0x1000);
 
-	.bss : {
+	.bss ALIGN(4K) : {
 		__bss_start = .;
 		*(.bss)
 		*(COMMON)

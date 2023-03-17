@@ -487,17 +487,18 @@ load_icode(struct Env *env, uint8_t *binary, size_t size) {
 
         res = map_region(&env->address_space, p_va, &kspace, p_va, memsz, prog_flags | PROT_USER_);
         if (res < 0) panic("map prog to env->address_space: %i \n", res);
+
+        unmap_region(&kspace, p_va, memsz);
     }
 
     env->binary = binary;
     env->env_tf.tf_rip = (uintptr_t) elf_header->e_entry;
 
-    int err = bind_functions(env, binary, size, bounds, Loaded_segments_num);
-    if (err < 0)
-        panic("bind_functions: %i", err);        
-
-    for (unsigned iter = 0; iter < phnum; iter++)
-        unmap_region(&kspace, bounds[iter].start, bounds[iter].size);
+    // int err = bind_functions(env, binary, size, bounds, Loaded_segments_num);
+    // if (err < 0)
+    //     panic("bind_functions: %i", err);        
+    // for (unsigned iter = 0; iter < phnum; iter++)
+    //     unmap_region(&kspace, bounds[iter].start, bounds[iter].size);
 
     // LAB 8: Your code here +
 

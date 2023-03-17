@@ -2017,7 +2017,10 @@ init_memory(void) {
 
 #ifdef SANITIZE_SHADOW_BASE
     unpoison_meta(&root);
+    platform_asan_unpoison((void*) (KERN_PF_STACK_TOP - KERN_PF_STACK_SIZE), KERN_PF_STACK_SIZE);
+    platform_asan_unpoison((void*) (KERN_STACK_TOP - KERN_STACK_SIZE), KERN_STACK_SIZE);
 #endif
+    
 
     /* Traps needs to be initiallized here
      * to alloc #PF to be handled during lazy allocation */
@@ -2071,6 +2074,10 @@ init_memory(void) {
 
     check_virtual_tree(kspace.root, MAX_CLASS);
     if (trace_init) cprintf("Kernel virutal memory tree is correct\n");
+
+    #ifdef SANITIZE_SHADOW_BASE
+        platform_asan_unpoison((void*) (USER_STACK_TOP - USER_STACK_SIZE), USER_STACK_SIZE);
+    #endif 
 }
 
 static uintptr_t user_mem_check_addr;

@@ -33,7 +33,6 @@ struct Env *envs = NULL;
  * (linked by Env->env_link) */
 static struct Env *env_free_list;
 
-
 /* NOTE: Should be at least LOGNENV */
 #define ENVGENSHIFT 12
 
@@ -502,7 +501,7 @@ load_icode(struct Env *env, uint8_t *binary, size_t size) {
 
     // LAB 8: Your code here +
 
-    int res = map_region(&env->address_space, USER_STACK_TOP - PAGE_SIZE, NULL, 0, PAGE_SIZE, PROT_R | PROT_W | PROT_USER_ | ALLOC_ZERO);
+    int res = map_region(&env->address_space, USER_STACK_TOP - USER_STACK_SIZE, NULL, 0, USER_STACK_SIZE, PROT_R | PROT_W | PROT_USER_ | ALLOC_ZERO);
     if (res < 0) panic("load_icode: %i \n", res);
 
     return 0;

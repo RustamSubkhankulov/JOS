@@ -17,21 +17,22 @@ SECTIONS
 
         PROVIDE(etext = .); /* Define the 'etext' symbol to this value */
 
-        *(.rodata .rodata.* .gnu.linkonce.r.* .data.rel.ro.local)
+        *(.rodata .rodata.* .gnu.linkonce.r.* .data.*)
+
+        /* Ensure page-aligned segment size */
+        . = ALIGN(0x1000);
     }
 
-
-    /* Adjust the address for the data segment to the next page */
-    . = ALIGN(0x1000);
 
     .data : {
         *(.data .data.rel.local .got .got.plt)
-    }
 
-    PROVIDE(edata = .);
+        PROVIDE(edata = .);
 
-    .bss : {
         *(.bss)
+
+        /* Ensure page-aligned segment size */
+        . = ALIGN(0x1000);
     }
 
     PROVIDE(end = .);

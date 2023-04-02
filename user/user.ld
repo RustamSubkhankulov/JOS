@@ -26,7 +26,7 @@ SECTIONS
 
 	.data ALIGN(4K) : {
 		__data_start = .;
-		*(.data .data.rel.local)
+		*(.data .data.*)
 		__data_end = .;
 
 		__ctors_start = .;
@@ -40,13 +40,11 @@ SECTIONS
 		KEEP(*(.fini_array .dtors))
 		__dtors_end = .;
 		. = ALIGN(8);
-	}
 
-	PROVIDE(edata = .);
+		*(.got*)
 
-	. = ALIGN(0x1000);
+		PROVIDE(edata = .);
 
-	.bss ALIGN(4K) : {
 		__bss_start = .;
 		*(.bss)
 		*(COMMON)

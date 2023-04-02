@@ -27,7 +27,8 @@ SECTIONS
 
     __rodata_start = .;
     *(EXCLUDE_FILE(*obj/kern/bootstrap.o) .rodata .rodata.* .gnu.linkonce.r.* .data.rel.ro.local)
-    . = ALIGN(8);
+    /* Ensure page-aligned segment size */
+    . = ALIGN(0x1000);
     __rodata_end = .;
   }
 
@@ -35,7 +36,7 @@ SECTIONS
   /* Adjust the address for the data segment to the next page */
   .data : ALIGN(0x1000) {
     __data_start = .;
-    *(EXCLUDE_FILE(obj/kern/bootstrap.o) .data .got.plt .data.rel .data.rel.local .got)
+    *(EXCLUDE_FILE(obj/kern/bootstrap.o) .data .got.plt .data.* .got)
     . = ALIGN(8);
     __data_end = .;
 
@@ -49,11 +50,14 @@ SECTIONS
     KEEP(*(SORT_BY_INIT_PRIORITY(.fini_array.*) SORT_BY_INIT_PRIORITY(.dtors.*)))
     KEEP(*(.fini_array .dtors))
     __dtors_end = .;
-    . = ALIGN(8);
+    /* Ensure page-aligned segment size */
+    . = ALIGN(0x1000);
   }
 
   PROVIDE(edata = .);
 
+  /* The bss segment */
+  /* Separate from .data due to higher alignment requirements in pmap.c */
   .bss : ALIGN(0x1000) {
     __bss_start = .;
     *(EXCLUDE_FILE(obj/kern/bootstrap.o) .bss)

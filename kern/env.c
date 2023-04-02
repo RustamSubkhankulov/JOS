@@ -211,7 +211,7 @@ env_alloc(struct Env **newenv_store, envid_t parent_id, enum EnvType type) {
 #endif
 
     /* For now init trapframe with IF set */
-    // env->env_tf.tf_rflags = FL_IF;
+    env->env_tf.tf_rflags |= FL_IF;
 
     /* Clear the page fault handler until user installs one. */
     env->env_pgfault_upcall = 0;
@@ -532,7 +532,7 @@ env_create(uint8_t *binary, size_t size, enum EnvType type) {
     err = load_icode(new_env, binary, size);
     if (err < 0) panic("load_icode: %i", err);
     
-    new_env->env_parent_id = 0;
+    // new_env->env_parent_id = 0;
 
     return;
 }
@@ -575,12 +575,17 @@ env_destroy(struct Env *env) {
 
     // LAB 3: Your code here
 
-    env_free(env);
-
     if (env == curenv)
+    {
+        env_free(env);
         sched_yield();
-    // LAB 8: Your code here (set in_page_fault = 0)
+    }
+    else 
+    {
+        env->env_status = ENV_DYING;
+    }
 
+    // LAB 8: Your code here (set in_page_fault = 0)
     in_page_fault = 0;
 }
 

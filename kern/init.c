@@ -155,8 +155,8 @@ i386_init(void) {
     env_init();
 
     /* Choose the timer used for scheduling: hpet or pit */
-    const char* picked_timer = "rtc";
-    // cprintf("Picked timer for schedule: %s\n", picked_timer);
+    const char* picked_timer = "hpet0";
+    cprintf("Picked timer for schedule: %s\n", picked_timer);
     timers_schedule(picked_timer);
 
 #ifdef CONFIG_KSPACE
@@ -178,7 +178,9 @@ i386_init(void) {
     ENV_CREATE(TEST, ENV_TYPE_USER);
 #else
     /* Touch all you want. */
-    ENV_CREATE(user_forktree, ENV_TYPE_USER);
+    // ENV_CREATE(user_pingpong, ENV_TYPE_USER);
+    ENV_CREATE(user_spin, ENV_TYPE_USER);
+    // ENV_CREATE(user_dumbfork, ENV_TYPE_USER);
 #endif /* TEST* */
 #endif
 

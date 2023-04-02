@@ -23,6 +23,7 @@
         "kclock.h": "c",
         "utility": "c",
         "stdio.h": "c",
-        "env.h": "c"
+        "env.h": "c",
+        "traceopt.h": "c"
     }
 }

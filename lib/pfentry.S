@@ -66,17 +66,31 @@ _pgfault_upcall:
 
     # LAB 9: Your code here
 
+    movq 136(%rsp), %rax # trap-time rip
+    movq 152(%rsp), %rbx # trap-time rsp
+    subq $8, %rbx
+    movq %rax, (%rbx)
+    movq %rbx, 152(%rsp)
+
     # Restore the trap-time registers.  After you do this, you
     # can no longer modify any general-purpose registers (POPA).
     # LAB 9: Your code here
 
+    addq $16, %rsp
+    POPA
+ 
     # Restore rflags from the stack.  After you do this, you can
     # no longer use arithmetic operations or anything else that
     # modifies rflags.
     # LAB 9: Your code here
 
+    addq $8, %rsp
+    popfq
+
     # Switch back to the adjusted trap-time stack.
     # LAB 9: Your code here
+
+    popq %rsp
 
     # Return to re-execute the instruction that faulted.
     ret

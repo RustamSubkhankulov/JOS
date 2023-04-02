@@ -2077,6 +2077,7 @@ init_memory(void) {
 
     #ifdef SANITIZE_SHADOW_BASE
         platform_asan_unpoison((void*) (USER_STACK_TOP - USER_STACK_SIZE), USER_STACK_SIZE);
+        platform_asan_unpoison((void*) (USER_EXCEPTION_STACK_TOP - USER_EXCEPTION_STACK_SIZE), USER_EXCEPTION_STACK_SIZE);
     #endif 
 }
 
@@ -2106,7 +2107,9 @@ user_mem_check(struct Env *env, const void *va, size_t len, int perm) {
     while (start < end)
     {
         struct Page* page = page_lookup_virtual(curenv->address_space.root, start, 0, 0);
-        assert(page);
+        
+        if (page == NULL)
+            return -E_FAULT;
 
         if ((page->state & perm) != perm)
         {

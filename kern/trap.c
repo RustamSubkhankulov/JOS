@@ -45,6 +45,9 @@ static struct Taskstate ts;
 
     extern void syscall_hdlr(void);
 
+    extern void clock_thdlr(void);
+    extern void timer_thdlr(void);
+
 #endif 
 
 /* For debugging, so print_trapframe can distinguish between printing
@@ -139,26 +142,31 @@ trap_init(void) {
     /* Insert trap handlers into IDT */
     // LAB 8: Your code here
 
-    idt[T_DIVIDE]  = GATE(1, GD_KT, (uint64_t) (&divide_thdlr),  0);
-    idt[T_DEBUG]   = GATE(1, GD_KT, (uint64_t) (&debug_thdlr),   0);
-    idt[T_NMI]     = GATE(1, GD_KT, (uint64_t) (&nmi_thdlr),     0);
-    idt[T_BRKPT]   = GATE(1, GD_KT, (uint64_t) (&brkpt_thdlr),   3);
-    idt[T_OFLOW]   = GATE(1, GD_KT, (uint64_t) (&oflow_thdlr),   0);
-    idt[T_BOUND]   = GATE(1, GD_KT, (uint64_t) (&bound_thdlr),   0);
-    idt[T_ILLOP]   = GATE(1, GD_KT, (uint64_t) (&illop_thdlr),   0);
-    idt[T_DEVICE]  = GATE(1, GD_KT, (uint64_t) (&device_thdlr),  0);
-    idt[T_DBLFLT]  = GATE(1, GD_KT, (uint64_t) (&dblflt_thdlr),  0);
-    idt[T_TSS]     = GATE(1, GD_KT, (uint64_t) (&tss_thdlr),     0);
-    idt[T_SEGNP]   = GATE(1, GD_KT, (uint64_t) (&segnp_thdlr),   0);
-    idt[T_STACK]   = GATE(1, GD_KT, (uint64_t) (&stack_thdlr),   0);
-    idt[T_GPFLT]   = GATE(1, GD_KT, (uint64_t) (&gpflt_thdlr),   0);
-    idt[T_PGFLT]   = GATE(1, GD_KT, (uint64_t) (&pgftl_thdlr),   0);
-    idt[T_FPERR]   = GATE(1, GD_KT, (uint64_t) (&fperr_thdlr),   0);
-    idt[T_ALIGN]   = GATE(1, GD_KT, (uint64_t) (&align_thdlr),   0);
-    idt[T_MCHK]    = GATE(1, GD_KT, (uint64_t) (&mchk_thdlr),    0);
-    idt[T_SIMDERR] = GATE(1, GD_KT, (uint64_t) (&simderr_thdlr), 0);
+    // WARNING TODO AAAAA
+
+    idt[T_DIVIDE]  = GATE(0, GD_KT, (uint64_t) (&divide_thdlr),  0);
+    idt[T_DEBUG]   = GATE(0, GD_KT, (uint64_t) (&debug_thdlr),   0);
+    idt[T_NMI]     = GATE(0, GD_KT, (uint64_t) (&nmi_thdlr),     0);
+    idt[T_BRKPT]   = GATE(0, GD_KT, (uint64_t) (&brkpt_thdlr),   3);
+    idt[T_OFLOW]   = GATE(0, GD_KT, (uint64_t) (&oflow_thdlr),   0);
+    idt[T_BOUND]   = GATE(0, GD_KT, (uint64_t) (&bound_thdlr),   0);
+    idt[T_ILLOP]   = GATE(0, GD_KT, (uint64_t) (&illop_thdlr),   0);
+    idt[T_DEVICE]  = GATE(0, GD_KT, (uint64_t) (&device_thdlr),  0);
+    idt[T_DBLFLT]  = GATE(0, GD_KT, (uint64_t) (&dblflt_thdlr),  0);
+    idt[T_TSS]     = GATE(0, GD_KT, (uint64_t) (&tss_thdlr),     0);
+    idt[T_SEGNP]   = GATE(0, GD_KT, (uint64_t) (&segnp_thdlr),   0);
+    idt[T_STACK]   = GATE(0, GD_KT, (uint64_t) (&stack_thdlr),   0);
+    idt[T_GPFLT]   = GATE(0, GD_KT, (uint64_t) (&gpflt_thdlr),   0);
+    idt[T_PGFLT]   = GATE(0, GD_KT, (uint64_t) (&pgftl_thdlr),   0);
+    idt[T_FPERR]   = GATE(0, GD_KT, (uint64_t) (&fperr_thdlr),   0);
+    idt[T_ALIGN]   = GATE(0, GD_KT, (uint64_t) (&align_thdlr),   0);
+    idt[T_MCHK]    = GATE(0, GD_KT, (uint64_t) (&mchk_thdlr),    0);
+    idt[T_SIMDERR] = GATE(0, GD_KT, (uint64_t) (&simderr_thdlr), 0);
 
     idt[T_SYSCALL] = GATE(0, GD_KT, (uint64_t) (&syscall_hdlr), 3);
+
+    idt[IRQ_CLOCK + IRQ_OFFSET] = GATE(0, GD_KT, (&clock_thdlr), 0);
+    idt[IRQ_TIMER + IRQ_OFFSET] = GATE(0, GD_KT, (&timer_thdlr), 0);
 
     /* Setup #PF handler dedicated stack
      * It should be switched on #PF because
@@ -301,6 +309,7 @@ trap_dispatch(struct Trapframe *tf) {
     case T_PGFLT:
         /* Handle processor exceptions. */
         // LAB 9: Your code here.
+        page_fault_handler(tf);
         return;
     case T_BRKPT:
         // LAB 8: Your code here
@@ -402,11 +411,6 @@ trap(struct Trapframe *tf) {
             in_page_fault = 0;
             env_pop_tf(tf);
         }
-        else 
-        {
-            if (trace_pagefaults)
-                cprintf("force_alloc_page failed: %i \n", res);
-        }
     }
 
     assert(curenv);
@@ -445,7 +449,6 @@ page_fault_handler(struct Trapframe *tf) {
     // LAB 9: Your code here:
 
     uintptr_t cr2 = rcr2();
-    (void)cr2;
 
     /* Handle kernel-mode page faults. */
     if (!(tf->tf_err & FEC_U)) {
@@ -487,26 +490,69 @@ page_fault_handler(struct Trapframe *tf) {
 
     static_assert(UTRAP_RIP == offsetof(struct UTrapframe, utf_rip), "UTRAP_RIP should be equal to RIP offset");
     static_assert(UTRAP_RSP == offsetof(struct UTrapframe, utf_rsp), "UTRAP_RSP should be equal to RSP offset");
+    
 
+    if (!curenv->env_pgfault_upcall)
+    {
+        cprintf("user fault va\n");
+     
+        user_mem_assert(curenv, (const void*) (USER_EXCEPTION_STACK_TOP - PAGE_SIZE), PAGE_SIZE, PROT_R | PROT_W);
+        env_destroy(curenv);
+    }
 
     /* Force allocation of exception stack page to prevent memcpy from
      * causing pagefault during another pagefault */
     // LAB 9: Your code here:
 
+    force_alloc_page(current_space, USER_EXCEPTION_STACK_TOP - PAGE_SIZE, MAX_ALLOCATION_CLASS);
+
     /* Assert existance of exception stack using user mem assert */
     // LAB 9: Your code here:
+
+    user_mem_assert(curenv, (const void*) (USER_EXCEPTION_STACK_TOP - PAGE_SIZE), PAGE_SIZE, PROT_R | PROT_W);
 
     /* Build local copy of UTrapframe */
     // LAB 9: Your code here:
 
+    struct UTrapframe utf = 
+    {
+        .utf_fault_va = (uint64_t) cr2,
+        .utf_err = tf->tf_err,
+        .utf_regs = tf->tf_regs,
+        .utf_rip = tf->tf_rip,
+        .utf_rflags = tf->tf_rflags,
+        .utf_rsp = tf->tf_rsp
+    };
+
     /* And then copy it userspace (nosan_memcpy) */
     // LAB 9: Your code here:
+
+    uintptr_t frame_start = 0;
+
+    if (tf->tf_rsp >  USER_EXCEPTION_STACK_TOP - PAGE_SIZE
+     && tf->tf_rsp <= USER_EXCEPTION_STACK_TOP - 1)
+    {
+        frame_start = tf->tf_rsp - sizeof(uint64_t) - sizeof(struct UTrapframe);
+        user_mem_assert(curenv, (void*) frame_start, USER_EXCEPTION_STACK_TOP - frame_start, PROT_W | PROT_R);
+    }
+    else 
+    {
+        frame_start = USER_EXCEPTION_STACK_TOP - sizeof(struct UTrapframe);
+    }
+
+    nosan_memcpy((void*) frame_start, (void*) &utf, sizeof(struct UTrapframe));
 
     /* Reset in_page_fault flag */
     // LAB 9: Your code here:
 
+    in_page_fault = 0;
+
     /* Rerun current environment */
     // LAB 9: Your code here:
+
+    tf->tf_rsp = frame_start;
+    tf->tf_rip = (uintptr_t) (curenv->env_pgfault_upcall);
+    env_run(curenv);
 
     while (1) {}
 }

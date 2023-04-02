@@ -22,7 +22,38 @@
 int32_t
 ipc_recv(envid_t *from_env_store, void *pg, size_t *size, int *perm_store) {
     // LAB 9: Your code here:
-    return -1;
+
+    if (pg == NULL)
+        pg = (void*) (MAX_USER_ADDRESS + 1);
+    // size_t sz = (size == NULL)? PAGE_SIZE : *size;
+
+    int res = sys_ipc_recv(pg, PAGE_SIZE);
+    if (res < 0)
+    {
+        if (from_env_store != NULL)
+            *from_env_store = 0;
+        if (perm_store != NULL)
+            *perm_store = 0;
+        if (size != NULL)
+            *size = 0;
+
+        return res;
+    }
+    else 
+    {
+        if (from_env_store != NULL)
+            *from_env_store = thisenv->env_ipc_from;
+        if (perm_store != NULL)
+            *perm_store = thisenv->env_ipc_perm;
+        if (size != NULL)
+            *size = thisenv->env_ipc_maxsz;
+    
+// #ifdef SANITIZE_USER_SHADOW_BASE
+//         platform_asan_unpoison(pg, PGSIZE);
+// #endif
+
+        return thisenv->env_ipc_value;
+    }
 }
 
 /* Send 'val' (and 'pg' with 'perm', if 'pg' is nonnull) to 'toenv'.
@@ -36,6 +67,19 @@ ipc_recv(envid_t *from_env_store, void *pg, size_t *size, int *perm_store) {
 void
 ipc_send(envid_t to_env, uint32_t val, void *pg, size_t size, int perm) {
     // LAB 9: Your code here:
+
+    if (pg == NULL)
+        pg = (void*) (MAX_USER_ADDRESS + 1);
+
+    int res = 0;
+
+    while ((res = sys_ipc_try_send(to_env, val, pg, size, perm)) != 0)
+    {
+        if (res != -E_IPC_NOT_RECV)
+            panic("ipc_send: %i", res);
+
+        sys_yield();
+    }
 }
 
 /* Find the first environment of the given type.  We'll use this to

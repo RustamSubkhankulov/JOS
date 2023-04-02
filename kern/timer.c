@@ -282,9 +282,9 @@ hpet_init() {
         hpetFemto = (uintptr_t)(cap >> 32);
         if (!(cap & HPET_LEG_RT_CAP)) panic("HPET has no LegacyReplacement mode");
 
-        /* cprintf("hpetFemto = %llu\n", hpetFemto); */
+        cprintf("hpetFemto = %lu\n", hpetFemto); 
         hpetFreq = (1 * Peta) / hpetFemto;
-        /* cprintf("HPET: Frequency = %d.%03dMHz\n", (uintptr_t)(hpetFreq / Mega), (uintptr_t)(hpetFreq % Mega)); */
+         cprintf("HPET: Frequency = %ld.%03ldMHz\n", (uintptr_t)(hpetFreq / Mega), (uintptr_t)(hpetFreq % Mega)); 
         /* Enable ENABLE_CNF bit to enable timer */
         hpetReg->GEN_CONF |= HPET_ENABLE_CNF;
         nmi_enable();

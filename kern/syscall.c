@@ -190,8 +190,8 @@ sys_alloc_region(envid_t envid, uintptr_t addr, size_t size, int perm) {
     if (addr >= MAX_USER_ADDRESS || (addr % PAGE_SIZE) != 0)
         return -E_INVAL;
 
-    if ((perm & (~PROT_ALL)) != 0)
-        return -E_INVAL;
+    // if ((perm & (~PROT_ALL)) != 0)
+    //     return -E_INVAL;
 
     // if (!(perm & ALLOC_ZERO) && !(perm & ALLOC_ONE))
         // perm |= ALLOC_ZERO;
@@ -239,8 +239,8 @@ sys_map_region(envid_t srcenvid, uintptr_t srcva,
      || (dstva >= MAX_USER_ADDRESS || (dstva % PAGE_SIZE) != 0))
         return -E_INVAL;
 
-    if ((perm & (~PROT_ALL)) != 0)
-        return -E_INVAL;
+    // if ((perm & (~PROT_ALL)) != 0)
+    //     return -E_INVAL;
 
     res = map_region(&dstenv->address_space, dstva, 
                      &srcenv->address_space, srcva, size, perm | PROT_USER_);

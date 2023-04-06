@@ -193,8 +193,8 @@ sys_alloc_region(envid_t envid, uintptr_t addr, size_t size, int perm) {
     // if ((perm & (~PROT_ALL)) != 0)
     //     return -E_INVAL;
 
-    // if (!(perm & ALLOC_ZERO) && !(perm & ALLOC_ONE))
-        // perm |= ALLOC_ZERO;
+    if (!(perm & ALLOC_ZERO) && !(perm & ALLOC_ONE))
+        perm |= ALLOC_ZERO;
 
     res = map_region(&targetenv->address_space, addr, NULL, 0, size, perm | PROT_USER_ | PROT_LAZY | ALLOC_ZERO);
     if (res < 0) return res;
@@ -330,7 +330,7 @@ sys_ipc_try_send(envid_t envid, uint32_t value, uintptr_t srcva, size_t size, in
     {
         size_t min_size = MIN(targetenv->env_ipc_maxsz, size);
 
-        res = sys_map_region(curenv->env_id, srcva, envid, targetenv->env_ipc_dstva, min_size, perm);
+        res = map_region(&targetenv->address_space, targetenv->env_ipc_dstva, &curenv->address_space, srcva, min_size, perm | PROT_USER_);
         // res = sys_map_region(envid, targetenv->env_ipc_dstva, curenv->env_id, srcva, min_size, perm);
         if (res < 0) return res;
 

@@ -25,9 +25,9 @@ ipc_recv(envid_t *from_env_store, void *pg, size_t *size, int *perm_store) {
 
     if (pg == NULL)
         pg = (void*) (MAX_USER_ADDRESS + 1);
-    // size_t sz = (size == NULL)? PAGE_SIZE : *size;
+    size_t sz = (size == NULL)? PAGE_SIZE : *size;
 
-    int res = sys_ipc_recv(pg, PAGE_SIZE);
+    int res = sys_ipc_recv(pg, sz);
     if (res < 0)
     {
         if (from_env_store != NULL)
@@ -48,10 +48,6 @@ ipc_recv(envid_t *from_env_store, void *pg, size_t *size, int *perm_store) {
         if (size != NULL)
             *size = thisenv->env_ipc_maxsz;
     
-// #ifdef SANITIZE_USER_SHADOW_BASE
-//         platform_asan_unpoison(pg, PAGE_SIZE);
-// #endif
-
         return thisenv->env_ipc_value;
     }
 }

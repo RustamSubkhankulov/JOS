@@ -32,6 +32,8 @@ fork(void) {
     if (res < 0) 
         panic("sys_map_region: %i", res);
 
+    // MAP STACK UNLAZY
+
     res = sys_env_set_pgfault_upcall(envid, thisenv->env_pgfault_upcall);
     if (res < 0)
         panic("sys_env_set_pgfault_upcall: %i", res);

@@ -45,8 +45,8 @@ extern uint8_t __text_start;
 extern uint8_t __text_end;
 
 void
-        NORETURN
-        _panic(const char *file, int line, const char *fmt, ...);
+NORETURN
+_panic(const char *file, int line, const char *fmt, ...);
 
 void
 platform_abort() {
@@ -67,16 +67,13 @@ asan_shadow_allocator(struct UTrapframe *utf)
 {
 // LAB 9: Your code here
     if ((uint8_t*) utf->utf_fault_va >= asan_internal_shadow_start &&
-        (uint8_t*) utf->utf_fault_va <= asan_internal_shadow_end)
+        (uint8_t*) utf->utf_fault_va <= asan_internal_shadow_end)   
     {
         if ((uint8_t*) utf->utf_fault_va >= SHADOW_FOR_ADDRESS((uintptr_t)(asan_internal_shadow_start)) &&
             (uint8_t*) utf->utf_fault_va <= SHADOW_FOR_ADDRESS((uintptr_t)(asan_internal_shadow_end)))
-        {
-            _panic("ASAN", __LINE__, "Shadow self dereferencing\n");
-            platform_abort();
-        }
+            _panic("asan", __LINE__, "Shadow self dereferencing\n");
 
-        sys_alloc_region(0, (void*) ROUNDDOWN(utf->utf_fault_va, PAGE_SIZE), PAGE_SIZE, ALLOC_ONE | PROT_RW);
+        sys_alloc_region(0, (void*) ROUNDDOWN(utf->utf_fault_va, SHADOW_STEP), SHADOW_STEP, ALLOC_ONE | PROT_RW);
         return 1;
     }
 

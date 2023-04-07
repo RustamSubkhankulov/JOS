@@ -239,8 +239,8 @@ sys_map_region(envid_t srcenvid, uintptr_t srcva,
      || (dstva >= MAX_USER_ADDRESS || (dstva % PAGE_SIZE) != 0))
         return -E_INVAL;
 
-    // if ((perm & (~PROT_ALL)) != 0)
-    //     return -E_INVAL;
+    if ((perm & (~PROT_ALL)) != 0)
+        return -E_INVAL;
 
     res = map_region(&dstenv->address_space, dstva, 
                      &srcenv->address_space, srcva, size, perm | PROT_USER_);

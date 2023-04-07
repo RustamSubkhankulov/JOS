@@ -81,7 +81,7 @@ sys_alloc_region(envid_t envid, void *va, size_t size, int perm) {
     int res = syscall(SYS_alloc_region, 1, envid, (uintptr_t)va, size, perm, 0, 0);
 #ifdef SANITIZE_USER_SHADOW_BASE
     /* Unpoison the allocated page */
-    if (!res && thisenv && envid == CURENVID && ((uintptr_t)va < SANITIZE_USER_SHADOW_BASE ||
+    if (!res && thisenv && (envid == CURENVID || envid == thisenv->env_id) && ((uintptr_t)va < SANITIZE_USER_SHADOW_BASE ||
                  (uintptr_t)va >= SANITIZE_USER_SHADOW_SIZE + SANITIZE_USER_SHADOW_BASE)) {
         platform_asan_unpoison(va, size);
     }
@@ -94,7 +94,7 @@ int
 sys_map_region(envid_t srcenv, void *srcva, envid_t dstenv, void *dstva, size_t size, int perm) {
     int res = syscall(SYS_map_region, 1, srcenv, (uintptr_t)srcva, dstenv, (uintptr_t)dstva, size, perm);
 #ifdef SANITIZE_USER_SHADOW_BASE
-    if (!res && dstenv == CURENVID)
+    if (!res && (dstenv == CURENVID || dstenv == thisenv->env_id))
         platform_asan_unpoison(dstva, size);
 #endif
     return res;

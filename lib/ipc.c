@@ -49,7 +49,7 @@ ipc_recv(envid_t *from_env_store, void *pg, size_t *size, int *perm_store) {
             *size = thisenv->env_ipc_maxsz;
     
 // #ifdef SANITIZE_USER_SHADOW_BASE
-//         platform_asan_unpoison(pg, PGSIZE);
+//         platform_asan_unpoison(pg, PAGE_SIZE);
 // #endif
 
         return thisenv->env_ipc_value;

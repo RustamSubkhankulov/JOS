@@ -114,7 +114,14 @@ devfile_read(struct Fd *fd, void *buf, size_t n) {
 
     // LAB 10: Your code here:
 
-    return 0;
+    fsipcbuf.read.req_fileid = fd->fd_file.id;
+    fsipcbuf.read.req_n = n;
+
+    int res = fsipc(FSREQ_READ, NULL);
+    if (res < 0) return res;
+
+    memcpy(buf, fsipcbuf.readRet.ret_buf, res);
+    return res;
 }
 
 /* Write at most 'n' bytes from 'buf' to 'fd' at the current seek position.
@@ -130,7 +137,12 @@ devfile_write(struct Fd *fd, const void *buf, size_t n) {
    * bytes than requested. */
     // LAB 10: Your code here:
 
-    return 0;
+    fsipcbuf.write.req_fileid = fd->fd_file.id;
+    fsipcbuf.write.req_n = n;
+
+    memcpy(fsipcbuf.write.req_buf, buf, n);
+
+    return fsipc(FSREQ_WRITE, NULL);
 }
 
 /* Get file information */

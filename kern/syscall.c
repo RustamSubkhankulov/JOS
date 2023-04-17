@@ -335,7 +335,7 @@ sys_ipc_try_send(envid_t envid, uint32_t value, uintptr_t srcva, size_t size, in
         if (res < 0) return res;
 
         targetenv->env_ipc_maxsz = min_size;
-        targetenv->env_ipc_perm = 0;
+        targetenv->env_ipc_perm = perm;
     }
     else 
         targetenv->env_ipc_perm = 0;
@@ -396,7 +396,13 @@ sys_ipc_recv(uintptr_t dstva, uintptr_t maxsize) {
 static int
 sys_region_refs(uintptr_t addr, size_t size, uintptr_t addr2, uintptr_t size2) {
     // LAB 10: Your code here
-    return 0;
+
+    int ref1 = region_maxref(&curenv->address_space, addr, size);
+
+    if (addr2 < MAX_USER_ADDRESS)
+        return ref1;
+    else 
+        return ref1 - region_maxref(&curenv->address_space, addr2, size2);
 }
 
 /* Dispatches to the correct kernel function, passing the arguments. */

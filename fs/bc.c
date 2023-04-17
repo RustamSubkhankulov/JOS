@@ -33,6 +33,14 @@ bc_pgfault(struct UTrapframe *utf) {
      * the disk. */
     // LAB 10: Your code here
 
+    addr = ROUNDDOWN(addr, PAGE_SIZE);
+
+    int res = sys_alloc_region(CURENVID, addr, PAGE_SIZE, PTE_SYSCALL);
+    if (res < 0) panic("bc_pgfault: %i \n", res);
+
+    res = ide_read(blockno * BLKSECTS, addr, BLKSECTS);
+    if (res < 0) panic("bc_pgfault: %i \n", res);
+
     return 1;
 }
 
@@ -54,6 +62,16 @@ flush_block(void *addr) {
 
     // LAB 10: Your code here.
 
+    addr = ROUNDDOWN(addr, PAGE_SIZE);
+
+    if (is_page_present(addr) && is_page_dirty(addr))
+    {
+        int res = ide_write(blockno * BLKSECTS, addr, BLKSECTS);
+        assert(res == 0);
+
+        res = sys_map_region(CURENVID, addr, CURENVID, addr, PAGE_SIZE, PTE_SYSCALL);
+        assert(res == 0);
+    }
 
     assert(!is_page_dirty(addr));
 }

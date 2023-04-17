@@ -532,8 +532,9 @@ env_create(uint8_t *binary, size_t size, enum EnvType type) {
 
     err = load_icode(new_env, binary, size);
     if (err < 0) panic("load_icode: %i", err);
-    
-    // new_env->env_parent_id = 0;
+
+    if (type == ENV_TYPE_FS)
+        new_env->env_tf.tf_rflags |= FL_IOPL_3;
 
     return;
 }

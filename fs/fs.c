@@ -45,6 +45,13 @@ free_block(uint32_t blockno) {
     SETBIT(bitmap, blockno);
 }
 
+void 
+occupy_block(uint32_t blockno) {
+    /* Blockno zero is the null pointer of block numbers. */
+    if (blockno == 0) panic("attempt to occupy zero block");
+    CLRBIT(bitmap, blockno);
+}
+
 /* Search the bitmap for a free block and allocate it.  When you
  * allocate a block, immediately flush the changed bitmap block
  * to disk.
@@ -60,6 +67,16 @@ alloc_block(void) {
      * super->s_nblocks blocks in the disk altogether. */
 
     // LAB 10: Your code here
+
+    for (uint32_t blockno = 1; blockno < super->s_nblocks; blockno++)
+    {
+        if (!block_is_free(blockno))
+            continue;
+
+        occupy_block(blockno);
+        flush_block(&bitmap[blockno / 32]); 
+        return blockno;
+    }
 
     return 0;
 }
@@ -127,11 +144,36 @@ fs_init(void) {
  * Hint: Don't forget to clear any block you allocate. */
 int
 file_block_walk(struct File *f, blockno_t filebno, blockno_t **ppdiskbno, bool alloc) {
-    // LAB 10: Your code here
+    // LAB 10: Your code here;
 
-    *ppdiskbno = 0;
+    if (filebno < NDIRECT)
+    {
+        *ppdiskbno = (blockno_t*) &f->f_direct + filebno;
+        return 0;
+    }
+    else if (filebno < NDIRECT + NINDIRECT)
+    {
+        filebno -= NDIRECT;
+        
+        if ((f->f_indirect == 0 || block_is_free(f->f_indirect)) && alloc)
+        {
+            blockno_t f_indirect = alloc_block();
+            if (f_indirect == 0) return -E_NO_DISK;
+            
+            f->f_indirect = f_indirect;
+        }
 
-    return 0;
+        if (f->f_indirect != 0 && !block_is_free(f->f_indirect))
+        {
+            blockno_t* indirect = (blockno_t*) diskaddr(f->f_indirect);
+            *ppdiskbno = &indirect[filebno];
+            return 0;
+        }
+        else
+            return -E_NOT_FOUND;
+    }
+    else 
+        return -E_INVAL;
 }
 
 /* Set *blk to the address in memory where the filebno'th
@@ -146,8 +188,19 @@ int
 file_get_block(struct File *f, uint32_t filebno, char **blk) {
     // LAB 10: Your code here
 
-    *blk = 0;
+    blockno_t* ptr;
+    int res = file_block_walk(f, filebno, &ptr, true);
+    if (res < 0) return res;
 
+    if (*ptr == 0)
+    {
+        blockno_t blockno = alloc_block();
+        if (blockno == 0) return -E_NO_DISK;
+    
+        *ptr = blockno;
+    }
+
+    *blk = diskaddr(*ptr);
     return 0;
 }
 

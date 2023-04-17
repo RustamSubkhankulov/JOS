@@ -48,6 +48,9 @@ static struct Taskstate ts;
     extern void clock_thdlr(void);
     extern void timer_thdlr(void);
 
+    extern void kbd_thdlr(void);
+    extern void serial_thdlr(void);
+
 #endif 
 
 /* For debugging, so print_trapframe can distinguish between printing
@@ -167,6 +170,9 @@ trap_init(void) {
 
     idt[IRQ_CLOCK + IRQ_OFFSET] = GATE(0, GD_KT, (&clock_thdlr), 0);
     idt[IRQ_TIMER + IRQ_OFFSET] = GATE(0, GD_KT, (&timer_thdlr), 0);
+
+    idt[IRQ_KBD    + IRQ_OFFSET] = GATE(0, GD_KT, (&kbd_thdlr),    0);
+    idt[IRQ_SERIAL + IRQ_OFFSET] = GATE(0, GD_KT, (&serial_thdlr), 0);
 
     /* Setup #PF handler dedicated stack
      * It should be switched on #PF because
@@ -344,6 +350,16 @@ trap_dispatch(struct Trapframe *tf) {
         }
         /* Handle keyboard and serial interrupts. */
         // LAB 11: Your code here
+    case IRQ_OFFSET + IRQ_SERIAL:
+        {
+            serial_intr();
+            return;
+        }
+    case IRQ_OFFSET + IRQ_KBD:
+        {
+            kbd_intr();
+            return;
+        }
     default:
         print_trapframe(tf);
         if (!(tf->tf_cs & 3))

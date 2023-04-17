@@ -38,9 +38,24 @@ is_page_present(void *va) {
     return get_uvpt_entry(va) & PTE_P;
 }
 
+bool 
+is_page_share(void* va) {
+    return get_uvpt_entry(va) & PTE_SHARE;
+}
+
 int
 foreach_shared_region(int (*fun)(void *start, void *end, void *arg), void *arg) {
     /* Calls fun() for every shared region */
     // LAB 11: Your code here
+
+    for (uintptr_t addr = 0; addr < MAX_USER_ADDRESS; addr += PAGE_SIZE)
+    {
+        if (is_page_share((void*) addr) == true)
+        {
+            int res = fun((void*) addr, (void*) (addr + PAGE_SIZE), arg);
+            if (res < 0) return res;
+        }
+    }
+
     return 0;
 }

@@ -25,6 +25,7 @@
         "stdio.h": "c",
         "env.h": "c",
         "traceopt.h": "c",
-        "kbdreg.h": "c"
+        "kbdreg.h": "c",
+        "types.h": "c"
     }
 }

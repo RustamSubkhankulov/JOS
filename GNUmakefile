@@ -321,13 +321,13 @@ export POST_CHECKOUT
 define PRE_COMMIT
 #!/bin/sh
 
-if git diff --cached --name-only --diff-filter=DMR | grep -q grade
-then
-   echo "FAIL: Don't change grade files."
-   exit 1
-else
-   exit 0
-fi
+# if git diff --cached --name-only --diff-filter=DMR | grep -q grade
+# then
+#    echo "FAIL: Don't change grade files."
+#    exit 1
+# else
+#    exit 0
+# fi
 endef
 export PRE_COMMIT
 

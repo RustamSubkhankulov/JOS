@@ -25,7 +25,7 @@ sys_cputs(const char *s, size_t len) {
     * Destroy the environment if not. */
 
     user_mem_assert(curenv, s, len, PROT_R);
-    cprintf("%s", s);
+    cprintf("%.*s", (int) len, s);
 
     return 0;
 }

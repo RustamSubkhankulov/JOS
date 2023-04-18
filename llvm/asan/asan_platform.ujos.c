@@ -133,7 +133,7 @@ platform_asan_init() {
     asan_internal_fill_range((uptr) UENVS, UENVS_SIZE, 0);
 
 #if LAB >= 12
-    platform_asan_unpoison((uptr)UVSYS, NVSYSCALLS * sizeof(int));
+    platform_asan_unpoison((void*) UVSYS, NVSYSCALLS * sizeof(int));
 #endif
 
     /* 4. Shared pages

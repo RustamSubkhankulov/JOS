@@ -342,6 +342,8 @@ trap_dispatch(struct Trapframe *tf) {
         {
             // rtc_timer_pic_handle();
 
+            vsys[VSYS_gettime] = gettime();
+
             assert(timer_for_schedule);
             timer_for_schedule->handle_interrupts();
 

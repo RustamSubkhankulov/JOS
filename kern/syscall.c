@@ -403,7 +403,7 @@ sys_env_set_trapframe(envid_t envid, struct Trapframe *tf) {
     int res = envid2env(envid, &targetenv, false);
     if (res < 0) return res;
 
-    user_mem_assert(curenv, tf, sizeof(struct Trapframe), PROT_R);
+    user_mem_assert(targetenv, tf, sizeof(struct Trapframe), PROT_R);
     // nosan_memcpy(&targetenv->env_tf, tf, sizeof(struct Trapframe));
     targetenv->env_tf = *tf;
 

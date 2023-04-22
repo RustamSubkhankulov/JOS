@@ -173,8 +173,11 @@ extern void (*volatile sys_exit)(void);
 extern void (*volatile sys_yield)(void);
 #endif
 
-#ifndef debug
+// #ifndef debug
+// #define debug 0
+// #endif
+
+#undef debug
 #define debug 0
-#endif
 
 #endif /* !JOS_INC_LIB_H */
